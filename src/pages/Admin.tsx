@@ -26,8 +26,9 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, Eye, EyeOff, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { problemsData, topicsData } from '@/lib/problemsData';
 
 interface Problem {
   id: string;
@@ -62,6 +63,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProblem, setEditingProblem] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -294,6 +296,122 @@ export default function Admin() {
     }
   };
 
+  const handleSeedDatabase = async () => {
+    if (!confirm('This will seed the database with all problems from the dataset. Continue?')) return;
+    
+    setSeeding(true);
+    
+    try {
+      // First, seed topics
+      const topicMap: Record<string, string> = {};
+      
+      for (const topic of topicsData) {
+        // Check if topic already exists
+        const { data: existingTopic } = await supabase
+          .from('topics')
+          .select('id')
+          .eq('slug', topic.slug)
+          .single();
+        
+        if (existingTopic) {
+          topicMap[topic.name] = existingTopic.id;
+        } else {
+          const { data: newTopic, error } = await supabase
+            .from('topics')
+            .insert({
+              name: topic.name,
+              slug: topic.slug,
+              icon: topic.icon,
+              display_order: topic.displayOrder,
+            })
+            .select('id')
+            .single();
+          
+          if (newTopic) {
+            topicMap[topic.name] = newTopic.id;
+          }
+          if (error) console.error('Topic insert error:', error);
+        }
+      }
+      
+      // Then, seed problems
+      let successCount = 0;
+      let skipCount = 0;
+      
+      for (const problem of problemsData) {
+        // Check if problem already exists
+        const { data: existingProblem } = await supabase
+          .from('problems')
+          .select('id')
+          .eq('slug', problem.slug)
+          .single();
+        
+        if (existingProblem) {
+          skipCount++;
+          continue;
+        }
+        
+        // Get topic ID
+        const topicId = topicMap[problem.category] || null;
+        
+        // Insert problem
+        const { data: newProblem, error: problemError } = await supabase
+          .from('problems')
+          .insert({
+            title: problem.title,
+            slug: problem.slug,
+            difficulty: problem.difficulty,
+            description: problem.description,
+            input_format: problem.inputFormat,
+            output_format: problem.outputFormat,
+            constraints: problem.constraints,
+            starter_code: problem.starterCode,
+            time_limit_ms: problem.timeLimitMs,
+            memory_limit_mb: problem.memoryLimitMb,
+            topic_id: topicId,
+            is_published: true,
+          })
+          .select('id')
+          .single();
+        
+        if (problemError) {
+          console.error('Problem insert error:', problemError);
+          continue;
+        }
+        
+        if (newProblem) {
+          // Insert test cases
+          const allTestCases = [
+            ...problem.visibleTestCases.map((tc, idx) => ({
+              problem_id: newProblem.id,
+              input: tc.input,
+              expected_output: tc.expectedOutput,
+              is_visible: true,
+              display_order: idx,
+            })),
+            ...problem.hiddenTestCases.map((tc, idx) => ({
+              problem_id: newProblem.id,
+              input: tc.input,
+              expected_output: tc.expectedOutput,
+              is_visible: false,
+              display_order: idx + problem.visibleTestCases.length,
+            })),
+          ];
+          
+          await supabase.from('test_cases').insert(allTestCases);
+          successCount++;
+        }
+      }
+      
+      toast.success(`Seeded ${successCount} problems (${skipCount} already existed)`);
+      fetchData();
+    } catch (error: any) {
+      toast.error('Failed to seed database: ' + error.message);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -313,13 +431,31 @@ export default function Admin() {
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <p className="mt-2 text-muted-foreground">Manage problems and test cases</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button variant="hero">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Problem
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              onClick={handleSeedDatabase}
+              disabled={seeding}
+            >
+              {seeding ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Seeding...
+                </>
+              ) : (
+                <>
+                  <Database className="mr-2 h-4 w-4" />
+                  Seed Problems
+                </>
+              )}
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button variant="hero">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Problem
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-h-[90vh] max-w-4xl overflow-hidden">
               <DialogHeader>
                 <DialogTitle>
@@ -509,7 +645,8 @@ export default function Admin() {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
 
         {/* Stats */}

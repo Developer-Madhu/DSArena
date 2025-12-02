@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { ADMIN_EMAILS } from '@/lib/problemsData';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null; isAdmin?: boolean }>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
 }
@@ -28,6 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
 
         if (session?.user) {
+          // Check if user email is in admin list
+          const emailIsAdmin = ADMIN_EMAILS.includes(session.user.email?.toLowerCase() || '');
+          if (emailIsAdmin) {
+            // Ensure admin role exists in database
+            ensureAdminRole(session.user.id);
+          }
           setTimeout(() => {
             checkAdminRole(session.user.id);
           }, 0);
@@ -43,12 +50,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
 
       if (session?.user) {
+        const emailIsAdmin = ADMIN_EMAILS.includes(session.user.email?.toLowerCase() || '');
+        if (emailIsAdmin) {
+          ensureAdminRole(session.user.id);
+        }
         checkAdminRole(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const ensureAdminRole = async (userId: string) => {
+    // Check if admin role already exists
+    const { data: existingRole } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'admin')
+      .single();
+
+    if (!existingRole) {
+      // Insert admin role
+      await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: 'admin' });
+    }
+  };
 
   const checkAdminRole = async (userId: string) => {
     const { data } = await supabase
@@ -78,7 +106,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
-    return { error };
+    
+    // Check if this is an admin email for redirect
+    const emailIsAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+    
+    return { error, isAdmin: emailIsAdmin };
   };
 
   const signOut = async () => {
