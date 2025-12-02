@@ -28,8 +28,7 @@ export function Navbar() {
             <Code2 className="h-5 w-5 text-primary-foreground" />
           </div>
           <span className="text-xl font-bold">
-            <span className="gradient-text">Lovable</span>
-            <span className="text-foreground">-DSA</span>
+            <span className="gradient-text">DSArena</span>
           </span>
         </Link>
 
