@@ -72,7 +72,7 @@ export default function Auth() {
           navigate('/dashboard');
         }
       } else {
-        const { error, isAdmin } = await signIn(email, password);
+        const { error } = await signIn(email, password);
         if (error) {
           if (error.message.includes('Invalid login')) {
             toast.error('Invalid email or password');
@@ -81,12 +81,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Welcome back!');
-          // Redirect admins to admin portal
-          if (isAdmin) {
-            navigate('/admin');
-          } else {
-            navigate('/dashboard');
-          }
+          navigate('/dashboard');
         }
       }
     } finally {

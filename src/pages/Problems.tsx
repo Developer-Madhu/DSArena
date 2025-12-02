@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProblemCard } from '@/components/problems/ProblemCard';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -11,77 +10,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
+import { problemsData, topicsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
-import { Search, Filter, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-interface Problem {
-  id: string;
-  title: string;
-  slug: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  acceptance_rate: number;
-  topics: { name: string; slug: string } | null;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { Search } from 'lucide-react';
 
 interface UserSolved {
   problem_id: string;
 }
 
-const difficultyOptions = ['all', 'easy', 'medium', 'hard'] as const;
-
 export default function Problems() {
-  const [problems, setProblems] = useState<Problem[]>([]);
-  const [topics, setTopics] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const { user } = useAuth();
 
   useEffect(() => {
-    fetchProblems();
-    fetchTopics();
-  }, []);
-
-  useEffect(() => {
     if (user) {
       fetchSolvedProblems();
     }
   }, [user]);
-
-  const fetchProblems = async () => {
-    const { data, error } = await supabase
-      .from('problems')
-      .select(`
-        id,
-        title,
-        slug,
-        difficulty,
-        acceptance_rate,
-        topics (name, slug)
-      `)
-      .eq('is_published', true)
-      .order('title');
-
-    if (!error && data) {
-      setProblems(data as Problem[]);
-    }
-    setLoading(false);
-  };
-
-  const fetchTopics = async () => {
-    const { data, error } = await supabase
-      .from('topics')
-      .select('id, name, slug')
-      .order('display_order');
-
-    if (!error && data) {
-      setTopics(data);
-    }
-  };
 
   const fetchSolvedProblems = async () => {
     if (!user) return;
@@ -96,21 +45,24 @@ export default function Problems() {
     }
   };
 
-  const filteredProblems = problems.filter((problem) => {
+  const filteredProblems = problemsData.filter((problem) => {
     const matchesSearch = problem.title.toLowerCase().includes(search.toLowerCase());
     const matchesTopic =
-      selectedTopic === 'all' || problem.topics?.slug === selectedTopic;
+      selectedTopic === 'all' || problem.category === selectedTopic;
     const matchesDifficulty =
       selectedDifficulty === 'all' || problem.difficulty === selectedDifficulty;
     return matchesSearch && matchesTopic && matchesDifficulty;
   });
 
   const problemCounts = {
-    total: problems.length,
-    easy: problems.filter((p) => p.difficulty === 'easy').length,
-    medium: problems.filter((p) => p.difficulty === 'medium').length,
-    hard: problems.filter((p) => p.difficulty === 'hard').length,
+    total: problemsData.length,
+    easy: problemsData.filter((p) => p.difficulty === 'easy').length,
+    medium: problemsData.filter((p) => p.difficulty === 'medium').length,
+    hard: problemsData.filter((p) => p.difficulty === 'hard').length,
   };
+
+  // Get unique categories from problems data
+  const categories = [...new Set(problemsData.map(p => p.category))];
 
   return (
     <div className="min-h-screen bg-background">
@@ -121,7 +73,7 @@ export default function Problems() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold">Problems</h1>
           <p className="mt-2 text-muted-foreground">
-            {problemCounts.total} problems across {topics.length} topics
+            {problemCounts.total} problems across {categories.length} topics
           </p>
         </div>
 
@@ -163,9 +115,9 @@ export default function Problems() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Topics</SelectItem>
-              {topics.map((topic) => (
-                <SelectItem key={topic.id} value={topic.slug}>
-                  {topic.name}
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -184,16 +136,10 @@ export default function Problems() {
         </div>
 
         {/* Problems List */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : filteredProblems.length === 0 ? (
+        {filteredProblems.length === 0 ? (
           <div className="rounded-xl border border-border bg-card p-12 text-center">
             <p className="text-muted-foreground">
-              {problems.length === 0
-                ? 'No problems available yet. Check back soon!'
-                : 'No problems match your filters.'}
+              No problems match your filters.
             </p>
           </div>
         ) : (
@@ -205,8 +151,7 @@ export default function Problems() {
                 title={problem.title}
                 slug={problem.slug}
                 difficulty={problem.difficulty}
-                topic={problem.topics?.name}
-                acceptanceRate={problem.acceptance_rate || undefined}
+                topic={problem.category}
                 isSolved={solvedIds.has(problem.id)}
               />
             ))}
