@@ -141,20 +141,27 @@ export default function ProblemDetail() {
   };
 
   const saveProgress = async (runtimeMs?: number) => {
-    if (!user || !problem) return;
+    if (!user || !problem) {
+      console.error('Cannot save progress: user or problem is missing');
+      return;
+    }
 
     try {
       // Check if already solved
-      const { data: existing } = await supabase
+      const { data: existing, error: checkError } = await supabase
         .from('user_solved')
         .select('id, attempts, best_runtime_ms')
         .eq('user_id', user.id)
         .eq('problem_id', problem.id)
-        .single();
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing record:', checkError);
+      }
 
       if (existing) {
         // Update existing record
-        await supabase
+        const { error: updateError } = await supabase
           .from('user_solved')
           .update({
             attempts: (existing.attempts || 0) + 1,
@@ -164,9 +171,13 @@ export default function ProblemDetail() {
             last_attempt_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
+
+        if (updateError) {
+          console.error('Error updating user_solved:', updateError);
+        }
       } else {
         // Create new record
-        await supabase
+        const { error: insertError } = await supabase
           .from('user_solved')
           .insert({
             user_id: user.id,
@@ -175,17 +186,27 @@ export default function ProblemDetail() {
             attempts: 1,
           });
 
+        if (insertError) {
+          console.error('Error inserting user_solved:', insertError);
+          toast.error('Failed to save progress');
+          return;
+        }
+
         // Update profile stats
         const difficultyField = `${problem.difficulty}_solved` as 'easy_solved' | 'medium_solved' | 'hard_solved';
         
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('total_solved, easy_solved, medium_solved, hard_solved')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
 
         if (profile) {
-          await supabase
+          const { error: profileUpdateError } = await supabase
             .from('profiles')
             .update({
               total_solved: (profile.total_solved || 0) + 1,
@@ -193,6 +214,10 @@ export default function ProblemDetail() {
               last_activity_date: new Date().toISOString().split('T')[0],
             })
             .eq('id', user.id);
+
+          if (profileUpdateError) {
+            console.error('Error updating profile:', profileUpdateError);
+          }
         }
       }
     } catch (error) {
