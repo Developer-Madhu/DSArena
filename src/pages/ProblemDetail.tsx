@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/resizable';
 import { problemsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -104,31 +105,49 @@ export default function ProblemDetail() {
     setResults(null);
     setConsoleOutput('');
 
-    // Simulate code execution locally for now
-    // In a real implementation, this would call an edge function
     try {
-      // For demo purposes, show test cases as "pending"
       const testCasesToRun = submitAll 
         ? [...problem.visibleTestCases, ...problem.hiddenTestCases]
         : problem.visibleTestCases;
 
-      // Simulate execution delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Mock results - in production this would be actual code execution
-      const mockResults: TestResult[] = testCasesToRun.map((tc, index) => ({
-        passed: false,
-        actual_output: 'Code execution not yet implemented',
-        runtime_ms: Math.floor(Math.random() * 100) + 10,
+      const formattedTestCases = testCasesToRun.map(tc => ({
+        input: tc.input,
+        expectedOutput: tc.expectedOutput,
       }));
 
-      setResults(mockResults);
-      setConsoleOutput('Note: Code execution backend not yet configured. This is a preview of the interface.');
+      const { data, error } = await supabase.functions.invoke('execute-code', {
+        body: { code, testCases: formattedTestCases },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to execute code');
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setResults(data.results);
+      setConsoleOutput(data.consoleOutput || '');
+
+      const passedCount = data.results.filter((r: TestResult) => r.passed).length;
+      const totalCount = data.results.length;
 
       if (submitAll) {
-        toast.info('Code execution backend not yet configured');
+        if (passedCount === totalCount) {
+          toast.success(`All ${totalCount} test cases passed!`);
+        } else {
+          toast.error(`${passedCount}/${totalCount} test cases passed`);
+        }
+      } else {
+        if (passedCount === totalCount) {
+          toast.success(`All visible test cases passed!`);
+        } else {
+          toast.info(`${passedCount}/${totalCount} visible test cases passed`);
+        }
       }
     } catch (error: any) {
+      console.error('Execution error:', error);
       toast.error(error.message || 'Failed to run code');
       setConsoleOutput(error.message || 'An error occurred');
     } finally {
