@@ -27,11 +27,14 @@ export default function Auth() {
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
+  // Get the redirect URL from query params
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
+
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      navigate(redirectTo);
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTo]);
 
   const validateForm = () => {
     try {
@@ -69,7 +72,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Account created successfully!');
-          navigate('/dashboard');
+          navigate(redirectTo);
         }
       } else {
         const { error } = await signIn(email, password);
@@ -81,7 +84,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Welcome back!');
-          navigate('/dashboard');
+          navigate(redirectTo);
         }
       }
     } finally {
