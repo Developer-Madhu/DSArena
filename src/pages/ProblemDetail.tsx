@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { CodeEditor } from '@/components/editor/CodeEditor';
@@ -15,8 +15,9 @@ import { problemsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import confetti from 'canvas-confetti';
 
 interface TestCase {
   id: string;
@@ -45,9 +46,19 @@ export default function ProblemDetail() {
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [consoleOutput, setConsoleOutput] = useState('');
   const [showDescription, setShowDescription] = useState(true);
+  const [solved, setSolved] = useState(false);
 
   // Find problem from local data
   const problem = problemsData.find(p => p.slug === slug);
+  const problemIndex = problemsData.findIndex(p => p.slug === slug);
+  
+  // Get next problem
+  const nextProblem = useMemo(() => {
+    if (problemIndex >= 0 && problemIndex < problemsData.length - 1) {
+      return problemsData[problemIndex + 1];
+    }
+    return null;
+  }, [problemIndex]);
 
   // Convert visible test cases to the format expected by TestCasePanel
   const testCases: TestCase[] = problem?.visibleTestCases.map((tc, index) => ({
@@ -66,6 +77,7 @@ export default function ProblemDetail() {
     }
     setCode(problem.starterCode);
     setLoading(false);
+    setSolved(false);
   }, [slug, problem, navigate]);
 
   // Load draft from localStorage
@@ -78,6 +90,93 @@ export default function ProblemDetail() {
       }
     }
   }, [problem, user]);
+
+  const triggerConfetti = () => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.8 },
+        colors: ['#00D9FF', '#10B981', '#8B5CF6'],
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.8 },
+        colors: ['#00D9FF', '#10B981', '#8B5CF6'],
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+    frame();
+  };
+
+  const saveProgress = async (runtimeMs?: number) => {
+    if (!user || !problem) return;
+
+    try {
+      // Check if already solved
+      const { data: existing } = await supabase
+        .from('user_solved')
+        .select('id, attempts, best_runtime_ms')
+        .eq('user_id', user.id)
+        .eq('problem_id', problem.id)
+        .single();
+
+      if (existing) {
+        // Update existing record
+        await supabase
+          .from('user_solved')
+          .update({
+            attempts: (existing.attempts || 0) + 1,
+            best_runtime_ms: runtimeMs && (!existing.best_runtime_ms || runtimeMs < existing.best_runtime_ms) 
+              ? runtimeMs 
+              : existing.best_runtime_ms,
+            last_attempt_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+      } else {
+        // Create new record
+        await supabase
+          .from('user_solved')
+          .insert({
+            user_id: user.id,
+            problem_id: problem.id,
+            best_runtime_ms: runtimeMs,
+            attempts: 1,
+          });
+
+        // Update profile stats
+        const difficultyField = `${problem.difficulty}_solved` as 'easy_solved' | 'medium_solved' | 'hard_solved';
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('total_solved, easy_solved, medium_solved, hard_solved')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          await supabase
+            .from('profiles')
+            .update({
+              total_solved: (profile.total_solved || 0) + 1,
+              [difficultyField]: (profile[difficultyField] || 0) + 1,
+              last_activity_date: new Date().toISOString().split('T')[0],
+            })
+            .eq('id', user.id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to save progress:', error);
+    }
+  };
 
   const saveDraft = useCallback(() => {
     if (!user || !problem) {
@@ -132,10 +231,14 @@ export default function ProblemDetail() {
 
       const passedCount = data.results.filter((r: TestResult) => r.passed).length;
       const totalCount = data.results.length;
+      const avgRuntime = data.results.reduce((sum: number, r: TestResult) => sum + (r.runtime_ms || 0), 0) / totalCount;
 
       if (submitAll) {
         if (passedCount === totalCount) {
-          toast.success(`All ${totalCount} test cases passed!`);
+          setSolved(true);
+          triggerConfetti();
+          await saveProgress(Math.round(avgRuntime));
+          toast.success(`🎉 Congratulations! All ${totalCount} test cases passed!`);
         } else {
           toast.error(`${passedCount}/${totalCount} test cases passed`);
         }
@@ -146,13 +249,20 @@ export default function ProblemDetail() {
           toast.info(`${passedCount}/${totalCount} visible test cases passed`);
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Execution error:', error);
-      toast.error(error.message || 'Failed to run code');
-      setConsoleOutput(error.message || 'An error occurred');
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      toast.error(message);
+      setConsoleOutput(message);
     } finally {
       setRunning(false);
       setSubmitting(false);
+    }
+  };
+
+  const goToNextProblem = () => {
+    if (nextProblem) {
+      navigate(`/problem/${nextProblem.slug}`);
     }
   };
 
@@ -200,6 +310,9 @@ export default function ProblemDetail() {
                         {config.label}
                       </Badge>
                       <Badge variant="secondary">{problem.category}</Badge>
+                      {solved && (
+                        <Badge className="bg-success text-success-foreground">Solved ✓</Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -342,6 +455,16 @@ export default function ProblemDetail() {
                       Paste disabled — type your solution
                     </span>
                     <div className="flex gap-2">
+                      {solved && nextProblem && (
+                        <Button
+                          variant="outline"
+                          onClick={goToNextProblem}
+                          className="border-success text-success hover:bg-success/10"
+                        >
+                          Next Problem
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         onClick={() => runCode(false)}

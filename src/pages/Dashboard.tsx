@@ -16,6 +16,7 @@ import {
   Code2,
   Loader2,
 } from 'lucide-react';
+import { problemsData } from '@/lib/problemsData';
 
 interface Profile {
   username: string | null;
@@ -87,21 +88,14 @@ export default function Dashboard() {
       setRecentSubmissions(submissionsData as RecentSubmission[]);
     }
 
-    // Fetch problem counts
-    const { data: problemsData } = await supabase
-      .from('problems')
-      .select('difficulty')
-      .eq('is_published', true);
-
-    if (problemsData) {
-      const counts = { easy: 0, medium: 0, hard: 0 };
-      problemsData.forEach((p: { difficulty: string }) => {
-        if (p.difficulty in counts) {
-          counts[p.difficulty as keyof typeof counts]++;
-        }
-      });
-      setProblemCounts(counts);
-    }
+    // Calculate problem counts from local data
+    const counts = { easy: 0, medium: 0, hard: 0 };
+    problemsData.forEach((p) => {
+      if (p.difficulty in counts) {
+        counts[p.difficulty as keyof typeof counts]++;
+      }
+    });
+    setProblemCounts(counts);
 
     setLoading(false);
   };
