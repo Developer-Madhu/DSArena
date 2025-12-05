@@ -114,8 +114,8 @@ export default function Auth() {
                 <Code2 className="h-6 w-6 text-primary-foreground" />
               </div>
               <span className="text-2xl font-bold">
-                <span className="gradient-text">Lovable</span>
-                <span className="text-foreground">-DSA</span>
+                <span className="gradient-text">DSA</span>
+                <span className="text-foreground">rena</span>
               </span>
             </Link>
           </div>
