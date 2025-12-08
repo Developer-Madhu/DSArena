@@ -140,88 +140,18 @@ export default function ProblemDetail() {
     frame();
   };
 
-  const saveProgress = async (runtimeMs?: number) => {
+  const saveProgressHandler = async (runtimeMs?: number) => {
     if (!user || !problem) {
       console.error('Cannot save progress: user or problem is missing');
       return;
     }
 
-    try {
-      // Check if already solved
-      const { data: existing, error: checkError } = await supabase
-        .from('user_solved')
-        .select('id, attempts, best_runtime_ms')
-        .eq('user_id', user.id)
-        .eq('problem_id', problem.id)
-        .maybeSingle();
-
-      if (checkError) {
-        console.error('Error checking existing record:', checkError);
-      }
-
-      if (existing) {
-        // Update existing record
-        const { error: updateError } = await supabase
-          .from('user_solved')
-          .update({
-            attempts: (existing.attempts || 0) + 1,
-            best_runtime_ms: runtimeMs && (!existing.best_runtime_ms || runtimeMs < existing.best_runtime_ms) 
-              ? runtimeMs 
-              : existing.best_runtime_ms,
-            last_attempt_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-
-        if (updateError) {
-          console.error('Error updating user_solved:', updateError);
-        }
-      } else {
-        // Create new record
-        const { error: insertError } = await supabase
-          .from('user_solved')
-          .insert({
-            user_id: user.id,
-            problem_id: problem.id,
-            best_runtime_ms: runtimeMs,
-            attempts: 1,
-          });
-
-        if (insertError) {
-          console.error('Error inserting user_solved:', insertError);
-          toast.error('Failed to save progress');
-          return;
-        }
-
-        // Update profile stats
-        const difficultyField = `${problem.difficulty}_solved` as 'easy_solved' | 'medium_solved' | 'hard_solved';
-        
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('total_solved, easy_solved, medium_solved, hard_solved')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error('Error fetching profile:', profileError);
-        }
-
-        if (profile) {
-          const { error: profileUpdateError } = await supabase
-            .from('profiles')
-            .update({
-              total_solved: (profile.total_solved || 0) + 1,
-              [difficultyField]: (profile[difficultyField] || 0) + 1,
-              last_activity_date: new Date().toISOString().split('T')[0],
-            })
-            .eq('id', user.id);
-
-          if (profileUpdateError) {
-            console.error('Error updating profile:', profileUpdateError);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to save progress:', error);
+    const { saveProgress } = await import('@/lib/progressStorage');
+    const result = await saveProgress(user.id, problem.id, problem.difficulty, runtimeMs);
+    
+    if (!result.success) {
+      console.error('Failed to save progress:', result.error);
+      // Progress is already saved locally, so user won't lose data
     }
   };
 
@@ -284,7 +214,7 @@ export default function ProblemDetail() {
         if (passedCount === totalCount) {
           setSolved(true);
           triggerConfetti();
-          await saveProgress(Math.round(avgRuntime));
+          await saveProgressHandler(Math.round(avgRuntime));
           toast.success(`🎉 Congratulations! All ${totalCount} test cases passed!`);
         } else {
           toast.error(`${passedCount}/${totalCount} test cases passed`);
