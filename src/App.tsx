@@ -12,6 +12,7 @@ import ProblemDetail from "./pages/ProblemDetail";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import PythonTrack from "./pages/PythonTrack";
+import LearningTracks from "./pages/LearningTracks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/problems" element={<ProtectedRoute><Problems /></ProtectedRoute>} />
             <Route path="/python-track" element={<ProtectedRoute><PythonTrack /></ProtectedRoute>} />
+            <Route path="/learning-tracks" element={<ProtectedRoute><LearningTracks /></ProtectedRoute>} />
             <Route path="/problem/:slug" element={<ProtectedRoute><ProblemDetail /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
