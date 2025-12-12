@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { CodeEditor } from '@/components/editor/CodeEditor';
@@ -15,9 +15,11 @@ import { problemsData, allProblemsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
+import { getLocalLivesData, loseLife, hasLives, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
+import { LivesDisplay } from '@/components/lives/LivesDisplay';
 
 interface TestCase {
   id: string;
@@ -48,6 +50,9 @@ export default function ProblemDetail() {
   const [showDescription, setShowDescription] = useState(true);
   const [solved, setSolved] = useState(false);
   const [alreadySolved, setAlreadySolved] = useState(false);
+  const [noLives, setNoLives] = useState(false);
+  const isActiveRef = useRef(true);
+  const hasLostLifeRef = useRef(false);
 
   // Find problem from local data (includes Python track)
   const problem = allProblemsData.find(p => p.slug === slug);
@@ -81,6 +86,80 @@ export default function ProblemDetail() {
     };
     checkIfSolved();
   }, [user, problem]);
+
+  // Lives system - detect when user leaves the page
+  useEffect(() => {
+    // Check if user has lives
+    if (!hasLives()) {
+      setNoLives(true);
+      return;
+    }
+
+    // Only apply lives system if problem is not already solved
+    if (alreadySolved) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && !hasLostLifeRef.current && !alreadySolved) {
+        // User switched tabs or minimized - lose a life
+        const newLivesData = loseLife(user?.id);
+        hasLostLifeRef.current = true;
+        
+        if (newLivesData.lives === 0) {
+          setNoLives(true);
+          toast.error('You lost all your lives! Come back in 24 hours.', {
+            duration: 5000,
+          });
+        } else {
+          toast.warning(`You lost a life for leaving! ${newLivesData.lives} lives remaining.`, {
+            duration: 3000,
+          });
+        }
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasLostLifeRef.current && !alreadySolved) {
+        // User is navigating away - lose a life
+        loseLife(user?.id);
+        hasLostLifeRef.current = true;
+      }
+    };
+
+    const handleBlur = () => {
+      if (!hasLostLifeRef.current && !alreadySolved) {
+        // Window lost focus - lose a life
+        const newLivesData = loseLife(user?.id);
+        hasLostLifeRef.current = true;
+        
+        if (newLivesData.lives === 0) {
+          setNoLives(true);
+          toast.error('You lost all your lives! Come back in 24 hours.', {
+            duration: 5000,
+          });
+        } else {
+          toast.warning(`Focus lost! You lost a life. ${newLivesData.lives} remaining.`, {
+            duration: 3000,
+          });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [user, alreadySolved]);
+
+  // Reset life loss tracking when problem changes
+  useEffect(() => {
+    hasLostLifeRef.current = false;
+    setNoLives(!hasLives());
+  }, [slug]);
 
   // Convert visible test cases to the format expected by TestCasePanel
   const testCases: TestCase[] = problem?.visibleTestCases.map((tc, index) => ({
@@ -263,6 +342,41 @@ export default function ProblemDetail() {
 
   const config = difficultyConfig[problem.difficulty];
 
+  // No lives left - show blocked screen
+  if (noLives && !alreadySolved) {
+    const timeRemaining = getTimeUntilNextRestore();
+    return (
+      <div className="flex h-screen flex-col bg-background">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto p-8">
+            <div className="flex justify-center mb-6">
+              {[0, 1, 2].map((i) => (
+                <Heart
+                  key={i}
+                  className="h-12 w-12 fill-muted text-muted-foreground/30 mx-1"
+                />
+              ))}
+            </div>
+            <h2 className="text-2xl font-bold text-destructive mb-4">No Lives Remaining</h2>
+            <p className="text-muted-foreground mb-6">
+              You've lost all your lives by leaving problem pages. Lives restore 24 hours after being lost.
+            </p>
+            {timeRemaining && (
+              <div className="bg-muted rounded-lg p-4 mb-6">
+                <p className="text-sm text-muted-foreground">Next life restores in:</p>
+                <p className="text-2xl font-bold text-primary">{formatTimeRemaining(timeRemaining)}</p>
+              </div>
+            )}
+            <Button onClick={() => navigate('/learning-tracks')} variant="outline">
+              Return to Learning Tracks
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col bg-background">
       <Navbar />
@@ -279,6 +393,16 @@ export default function ProblemDetail() {
               </Button>
             )}
           </p>
+        </div>
+      )}
+
+      {/* Lives Display Banner */}
+      {!alreadySolved && (
+        <div className="bg-card border-b border-border px-4 py-2 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            ⚠️ Leaving this page will cost you a life!
+          </span>
+          <LivesDisplay />
         </div>
       )}
 

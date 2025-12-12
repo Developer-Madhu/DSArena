@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth';
 import { fetchSolvedProblems } from '@/lib/progressStorage';
 import { languageTracks, getAvailableTracks, getComingSoonTracks } from '@/lib/languageTracksData';
-import { pythonProblemsData, PYTHON_TRACK_TOTAL } from '@/lib/pythonProblemsData';
+import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { Lock, ArrowRight, CheckCircle2, Code2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,9 +25,15 @@ export default function LearningTracks() {
   const availableTracks = getAvailableTracks();
   const comingSoonTracks = getComingSoonTracks();
 
-  // Calculate progress for Python track
-  const pythonProgress = pythonProblemsData.filter(p => solvedIds.has(p.id)).length;
-  const pythonProgressPercent = (pythonProgress / PYTHON_TRACK_TOTAL) * 100;
+  // Calculate progress for each track
+  const getTrackProgress = (track: typeof languageTracks[0]) => {
+    if (!track.problems) return { solved: 0, percent: 0 };
+    const solved = track.problems.filter(p => solvedIds.has(p.id)).length;
+    return {
+      solved,
+      percent: (solved / track.totalProblems) * 100
+    };
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -46,6 +52,11 @@ export default function LearningTracks() {
             Master programming languages from basics to advanced with structured learning paths.
             Each track contains 30 carefully curated problems.
           </p>
+          
+          {/* Lives Display */}
+          <div className="flex justify-center mt-4">
+            <LivesDisplay showTimer />
+          </div>
         </div>
 
         {/* Available Tracks */}
@@ -54,11 +65,10 @@ export default function LearningTracks() {
             <CheckCircle2 className="h-5 w-5 text-success" />
             Available Now
           </h2>
-          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {availableTracks.map((track) => {
-              const progress = track.id === 'python' ? pythonProgress : 0;
-              const progressPercent = track.id === 'python' ? pythonProgressPercent : 0;
-              const isComplete = progress === track.totalProblems;
+              const { solved, percent } = getTrackProgress(track);
+              const isComplete = solved === track.totalProblems;
 
               return (
                 <Link key={track.id} to={`/${track.slug}`}>
@@ -88,12 +98,12 @@ export default function LearningTracks() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs sm:text-sm">
                           <span className="text-muted-foreground">Progress</span>
-                          <span className="font-medium">{progress}/{track.totalProblems}</span>
+                          <span className="font-medium">{solved}/{track.totalProblems}</span>
                         </div>
-                        <Progress value={progressPercent} className="h-2" />
+                        <Progress value={percent} className="h-2" />
                       </div>
                       <Button variant="ghost" size="sm" className="w-full mt-4 text-primary">
-                        Continue Learning
+                        {solved > 0 ? 'Continue Learning' : 'Start Learning'}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </CardContent>
@@ -105,28 +115,30 @@ export default function LearningTracks() {
         </section>
 
         {/* Coming Soon Tracks */}
-        <section>
-          <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 flex items-center gap-2">
-            <Lock className="h-5 w-5 text-muted-foreground" />
-            Coming Soon
-          </h2>
-          <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-            {comingSoonTracks.map((track) => (
-              <Card
-                key={track.id}
-                className="opacity-60 cursor-not-allowed"
-              >
-                <CardContent className="p-3 sm:p-4 text-center">
-                  <span className="text-2xl sm:text-3xl block mb-2">{track.icon}</span>
-                  <h3 className="font-semibold text-sm sm:text-base">{track.name}</h3>
-                  <Badge variant="secondary" className="mt-2 text-xs">
-                    Coming Soon
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
+        {comingSoonTracks.length > 0 && (
+          <section>
+            <h2 className="text-lg sm:text-xl font-bold mb-4 sm:mb-6 flex items-center gap-2">
+              <Lock className="h-5 w-5 text-muted-foreground" />
+              Coming Soon
+            </h2>
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+              {comingSoonTracks.map((track) => (
+                <Card
+                  key={track.id}
+                  className="opacity-60 cursor-not-allowed"
+                >
+                  <CardContent className="p-3 sm:p-4 text-center">
+                    <span className="text-2xl sm:text-3xl block mb-2">{track.icon}</span>
+                    <h3 className="font-semibold text-sm sm:text-base">{track.name}</h3>
+                    <Badge variant="secondary" className="mt-2 text-xs">
+                      Coming Soon
+                    </Badge>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

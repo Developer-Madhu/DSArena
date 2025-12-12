@@ -1,5 +1,8 @@
 // Complete problems dataset with descriptions, test cases, and metadata
 import { pythonProblemsData } from './pythonProblemsData';
+import { javascriptProblemsData } from './javascriptProblemsData';
+import { javaProblemsData } from './javaProblemsData';
+import { cppProblemsData } from './cppProblemsData';
 
 export interface ProblemData {
   id: string;
@@ -1199,5 +1202,11 @@ export const topicsData = [
   { name: "Python Track", slug: "python-track", icon: "Code", displayOrder: 19 }
 ];
 
-// Combined problems data including Python track
-export const allProblemsData: ProblemData[] = [...problemsData, ...pythonProblemsData];
+// Combined problems data including all language tracks
+export const allProblemsData: ProblemData[] = [
+  ...problemsData, 
+  ...pythonProblemsData,
+  ...javascriptProblemsData,
+  ...javaProblemsData,
+  ...cppProblemsData
+];

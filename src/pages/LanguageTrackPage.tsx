@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CompletionCertificate } from '@/components/certificate/CompletionCertificate';
-import { pythonProblemsData, PYTHON_TRACK_TOTAL } from '@/lib/pythonProblemsData';
+import { getTrackBySlug, LanguageTrack } from '@/lib/languageTracksData';
+import { ProblemData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
 import { fetchSolvedProblems } from '@/lib/progressStorage';
 import { LivesDisplay } from '@/components/lives/LivesDisplay';
@@ -15,7 +16,8 @@ import {
   Code, 
   ChevronRight,
   Sparkles,
-  GraduationCap
+  GraduationCap,
+  ArrowLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -25,10 +27,22 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-export default function PythonTrack() {
+export default function LanguageTrackPage() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
   const [showCertificate, setShowCertificate] = useState(false);
   const { user } = useAuth();
+
+  const track = getTrackBySlug(slug || '');
+  const problems = track?.problems || [];
+
+  useEffect(() => {
+    if (!track || !track.isAvailable) {
+      navigate('/learning-tracks');
+      return;
+    }
+  }, [track, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -36,16 +50,20 @@ export default function PythonTrack() {
     }
   }, [user]);
 
-  const solvedCount = pythonProblemsData.filter(p => solvedIds.has(p.id)).length;
-  const progressPercent = (solvedCount / PYTHON_TRACK_TOTAL) * 100;
-  const isTrackComplete = solvedCount === PYTHON_TRACK_TOTAL;
+  if (!track || !track.isAvailable) {
+    return null;
+  }
 
-  const beginnerProblems = pythonProblemsData.filter(p => p.difficulty === 'easy');
-  const intermediateProblems = pythonProblemsData.filter(p => p.difficulty === 'medium');
-  const advancedProblems = pythonProblemsData.filter(p => p.difficulty === 'hard');
+  const solvedCount = problems.filter(p => solvedIds.has(p.id)).length;
+  const progressPercent = (solvedCount / track.totalProblems) * 100;
+  const isTrackComplete = solvedCount === track.totalProblems;
 
-  const renderProblemList = (problems: typeof pythonProblemsData, title: string, icon: string) => {
-    const sectionSolvedCount = problems.filter(p => solvedIds.has(p.id)).length;
+  const beginnerProblems = problems.filter(p => p.difficulty === 'easy');
+  const intermediateProblems = problems.filter(p => p.difficulty === 'medium');
+  const advancedProblems = problems.filter(p => p.difficulty === 'hard');
+
+  const renderProblemList = (problemList: ProblemData[], title: string, icon: string) => {
+    const sectionSolvedCount = problemList.filter(p => solvedIds.has(p.id)).length;
     
     return (
       <div className="mb-6 sm:mb-8">
@@ -53,13 +71,13 @@ export default function PythonTrack() {
           <span className="text-xl sm:text-2xl">{icon}</span>
           <h2 className="text-lg sm:text-xl font-bold">{title}</h2>
           <Badge variant="secondary" className="ml-2 text-xs">
-            {sectionSolvedCount}/{problems.length}
+            {sectionSolvedCount}/{problemList.length}
           </Badge>
         </div>
         <div className="grid gap-2 sm:gap-3">
-          {problems.map((problem) => {
+          {problemList.map((problem, index) => {
             const isSolved = solvedIds.has(problem.id);
-            const problemNumber = pythonProblemsData.findIndex(p => p.id === problem.id) + 1;
+            const problemNumber = problems.findIndex(p => p.id === problem.id) + 1;
             
             return (
               <Link
@@ -117,16 +135,27 @@ export default function PythonTrack() {
       <Navbar />
 
       <main className="container mx-auto px-4 py-4 sm:py-8">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/learning-tracks')}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          All Tracks
+        </Button>
+
         {/* Header */}
         <div className="mb-6 sm:mb-8 text-center">
           <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <Code className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
+            <span className="text-4xl sm:text-5xl">{track.icon}</span>
             <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Python Learning Track
+              {track.name} Learning Track
             </h1>
           </div>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
-            Master Python programming from basics to advanced concepts through {PYTHON_TRACK_TOTAL} carefully curated coding challenges.
+            {track.description} through {track.totalProblems} carefully curated coding challenges.
           </p>
           
           {/* Lives Display */}
@@ -142,14 +171,14 @@ export default function PythonTrack() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs sm:text-sm font-medium text-muted-foreground">Track Progress</span>
                 <span className="text-xs sm:text-sm font-bold text-primary">
-                  {solvedCount} / {PYTHON_TRACK_TOTAL} Problems
+                  {solvedCount} / {track.totalProblems} Problems
                 </span>
               </div>
               <Progress value={progressPercent} className="h-2 sm:h-3" />
               <p className="text-[10px] sm:text-xs text-muted-foreground mt-2">
                 {isTrackComplete 
-                  ? "🎉 Congratulations! You've completed the entire Python Track!" 
-                  : `${PYTHON_TRACK_TOTAL - solvedCount} problems remaining to complete the track`}
+                  ? `🎉 Congratulations! You've completed the entire ${track.name} Track!` 
+                  : `${track.totalProblems - solvedCount} problems remaining to complete the track`}
               </p>
             </div>
             
@@ -174,25 +203,31 @@ export default function PythonTrack() {
         <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
           <div className="rounded-lg sm:rounded-xl border border-border bg-card p-3 sm:p-4 text-center">
             <span className="text-xl sm:text-2xl">🟢</span>
-            <p className="text-lg sm:text-2xl font-bold text-success mt-1">{beginnerProblems.filter(p => solvedIds.has(p.id)).length}/{beginnerProblems.length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-success mt-1">
+              {beginnerProblems.filter(p => solvedIds.has(p.id)).length}/{beginnerProblems.length}
+            </p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">Beginner</p>
           </div>
           <div className="rounded-lg sm:rounded-xl border border-border bg-card p-3 sm:p-4 text-center">
             <span className="text-xl sm:text-2xl">🟡</span>
-            <p className="text-lg sm:text-2xl font-bold text-warning mt-1">{intermediateProblems.filter(p => solvedIds.has(p.id)).length}/{intermediateProblems.length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-warning mt-1">
+              {intermediateProblems.filter(p => solvedIds.has(p.id)).length}/{intermediateProblems.length}
+            </p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">Intermediate</p>
           </div>
           <div className="rounded-lg sm:rounded-xl border border-border bg-card p-3 sm:p-4 text-center">
             <span className="text-xl sm:text-2xl">🔴</span>
-            <p className="text-lg sm:text-2xl font-bold text-destructive mt-1">{advancedProblems.filter(p => solvedIds.has(p.id)).length}/{advancedProblems.length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-destructive mt-1">
+              {advancedProblems.filter(p => solvedIds.has(p.id)).length}/{advancedProblems.length}
+            </p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">Advanced</p>
           </div>
         </div>
 
         {/* Problem Lists by Level */}
-        {renderProblemList(beginnerProblems, 'Beginner Level (1-10)', '🟢')}
-        {renderProblemList(intermediateProblems, 'Intermediate Level (11-20)', '🟡')}
-        {renderProblemList(advancedProblems, 'Advanced Level (21-30)', '🔴')}
+        {beginnerProblems.length > 0 && renderProblemList(beginnerProblems, 'Beginner Level', '🟢')}
+        {intermediateProblems.length > 0 && renderProblemList(intermediateProblems, 'Intermediate Level', '🟡')}
+        {advancedProblems.length > 0 && renderProblemList(advancedProblems, 'Advanced Level', '🔴')}
 
         {/* Certificate Dialog */}
         <Dialog open={showCertificate} onOpenChange={setShowCertificate}>
@@ -210,8 +245,8 @@ export default function PythonTrack() {
                 month: 'long', 
                 day: 'numeric' 
               })}
-              trackName="Python Learning Track"
-              totalProblems={PYTHON_TRACK_TOTAL}
+              trackName={`${track.name} Learning Track`}
+              totalProblems={track.totalProblems}
             />
           </DialogContent>
         </Dialog>
