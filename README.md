@@ -7,7 +7,7 @@
       <img src="https://img.shields.io/badge/PRs-Welcome-orange?style=for-the-badge">
     </p>
 
-    ## 🖤 Overview
+   ## 🖤 Overview
    This repository is a neatly organized collection of Python solutions to classic programming and interview-prep problems.  
     Every script in this project is:
     - Function-based  
@@ -15,27 +15,27 @@
     - Input/Output formatted  
     - Beginner & interview-friendly  
 
-    ## 📁 Project Structure
+   ## 📁 Project Structure
    python_track_solutions/
-    ├── largest_of_three.py
-    ├── prime_check.py
-    ├── fibonacci.py
-    ├── reverse_string.py
-    ├── sum_of_digits.py
-    └── more coming soon...
+   ├── largest_of_three.py
+   ├── prime_check.py
+   ├── fibonacci.py
+   ├── reverse_string.py
+   ├── sum_of_digits.py
+   └── more coming soon...
 
-    ## 🧩 Features
+   ## 🧩 Features
    - Intuitive problem-wise separation  
-    - Clean and consistent code formatting  
-    - Carefully chosen algorithms  
-    - Perfect for beginners & interview candidates  
+   - Clean and consistent code formatting  
+   - Carefully chosen algorithms  
+   - Perfect for beginners & interview candidates  
 
-    ## 🛠️ Tech Stack
+   ## 🛠️ Tech Stack
    - Python 3.x  
-    - Standard libraries only  
+   - Standard libraries only  
 
-    ## 🤝 Contribute
+   ## 🤝 Contribute
    PRs are open and appreciated.  
 
-    ## 🌌 Author
+   ## 🌌 Author
    Made with ❤️ and clean Python.
