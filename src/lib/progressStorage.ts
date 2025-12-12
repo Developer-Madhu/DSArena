@@ -1,7 +1,7 @@
 // Progress persistence layer with localStorage backup and Supabase sync
 import { supabase } from '@/integrations/supabase/client';
 
-const PROGRESS_KEY = 'dsarena_user_progress';
+const getProgressKey = (userId?: string) => `dsarena_user_progress_${userId || 'anonymous'}`;
 
 interface LocalProgress {
   solvedProblems: string[];
@@ -9,48 +9,48 @@ interface LocalProgress {
   userId?: string;
 }
 
-// Get progress from localStorage
-export function getLocalProgress(): LocalProgress {
+// Get progress from localStorage for a specific user
+export function getLocalProgress(userId?: string): LocalProgress {
   try {
-    const stored = localStorage.getItem(PROGRESS_KEY);
+    const stored = localStorage.getItem(getProgressKey(userId));
     if (stored) {
       return JSON.parse(stored);
     }
   } catch (e) {
     console.error('Error reading local progress:', e);
   }
-  return { solvedProblems: [], lastUpdated: new Date().toISOString() };
+  return { solvedProblems: [], lastUpdated: new Date().toISOString(), userId };
 }
 
-// Save progress to localStorage
-export function saveLocalProgress(problemId: string, userId?: string): void {
+// Save progress to localStorage for a specific user
+export function saveLocalProgress(problemId: string, userId: string): void {
   try {
-    const current = getLocalProgress();
+    const current = getLocalProgress(userId);
     if (!current.solvedProblems.includes(problemId)) {
       current.solvedProblems.push(problemId);
     }
     current.lastUpdated = new Date().toISOString();
     current.userId = userId;
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(current));
+    localStorage.setItem(getProgressKey(userId), JSON.stringify(current));
   } catch (e) {
     console.error('Error saving local progress:', e);
   }
 }
 
-// Check if problem is solved locally
-export function isProblemSolvedLocally(problemId: string): boolean {
-  const progress = getLocalProgress();
+// Check if problem is solved locally for a specific user
+export function isProblemSolvedLocally(problemId: string, userId?: string): boolean {
+  const progress = getLocalProgress(userId);
   return progress.solvedProblems.includes(problemId);
 }
 
 // Clear local progress for a user (on logout)
-export function clearLocalProgress(): void {
-  localStorage.removeItem(PROGRESS_KEY);
+export function clearLocalProgress(userId?: string): void {
+  localStorage.removeItem(getProgressKey(userId));
 }
 
 // Sync local progress to Supabase
 export async function syncProgressToSupabase(userId: string): Promise<void> {
-  const local = getLocalProgress();
+  const local = getLocalProgress(userId);
   
   for (const problemId of local.solvedProblems) {
     try {
@@ -173,14 +173,14 @@ export async function fetchSolvedProblems(userId: string): Promise<Set<string>> 
     if (error) {
       console.error('Error fetching solved problems:', error);
       // Fall back to local storage
-      const local = getLocalProgress();
+      const local = getLocalProgress(userId);
       return new Set(local.solvedProblems);
     }
 
     const solvedIds = new Set(data.map(d => d.problem_id));
 
-    // Merge with local progress
-    const local = getLocalProgress();
+    // Merge with local progress for this specific user
+    const local = getLocalProgress(userId);
     for (const id of local.solvedProblems) {
       solvedIds.add(id);
     }
@@ -188,7 +188,7 @@ export async function fetchSolvedProblems(userId: string): Promise<Set<string>> 
     return solvedIds;
   } catch (error) {
     console.error('Error fetching solved problems:', error);
-    const local = getLocalProgress();
+    const local = getLocalProgress(userId);
     return new Set(local.solvedProblems);
   }
 }

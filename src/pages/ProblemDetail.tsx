@@ -110,7 +110,7 @@ export default function ProblemDetail() {
   // Lives system - detect when user leaves the page
   useEffect(() => {
     // Check if user has lives
-    if (!hasLives()) {
+    if (!hasLives(user?.id)) {
       setNoLives(true);
       return;
     }
@@ -118,10 +118,8 @@ export default function ProblemDetail() {
     // Only apply lives system if problem is not already solved
     if (alreadySolved) return;
 
-    let lifeLostThisVisibility = false;
-
     const handleVisibilityChange = () => {
-      if (document.hidden && !alreadySolved && hasLives()) {
+      if (document.hidden && !alreadySolved && hasLives(user?.id)) {
         // User switched tabs or minimized - lose a life
         const newLivesData = loseLife(user?.id);
         
@@ -139,9 +137,9 @@ export default function ProblemDetail() {
     };
 
     const handleBlur = () => {
-      if (!alreadySolved && hasLives()) {
+      if (!alreadySolved && hasLives(user?.id)) {
         // Window lost focus - lose a life (only if we still have lives)
-        const currentLives = getLocalLivesData();
+        const currentLives = getLocalLivesData(user?.id);
         if (currentLives.lives > 0) {
           const newLivesData = loseLife(user?.id);
           
@@ -170,8 +168,8 @@ export default function ProblemDetail() {
 
   // Reset life check when problem changes
   useEffect(() => {
-    setNoLives(!hasLives());
-  }, [slug]);
+    setNoLives(!hasLives(user?.id));
+  }, [slug, user?.id]);
 
   // Convert visible test cases to the format expected by TestCasePanel
   const testCases: TestCase[] = problem?.visibleTestCases.map((tc, index) => ({
