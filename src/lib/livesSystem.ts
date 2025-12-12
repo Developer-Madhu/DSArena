@@ -1,7 +1,7 @@
 // Lives System - 3 lives that restore 24 hours after loss
 import { supabase } from '@/integrations/supabase/client';
 
-const LIVES_STORAGE_KEY = 'dsarena_lives_data';
+const getLivesStorageKey = (userId?: string) => `dsarena_lives_data_${userId || 'anonymous'}`;
 
 export interface LivesData {
   lives: number;
@@ -14,23 +14,23 @@ const DEFAULT_LIVES: LivesData = {
   lostTimes: [],
 };
 
-// Get lives data from localStorage
-export function getLocalLivesData(): LivesData {
+// Get lives data from localStorage for a specific user
+export function getLocalLivesData(userId?: string): LivesData {
   try {
-    const stored = localStorage.getItem(LIVES_STORAGE_KEY);
+    const stored = localStorage.getItem(getLivesStorageKey(userId));
     if (stored) {
       const data = JSON.parse(stored) as LivesData;
       // Restore lives that have passed 24 hours
-      return restoreExpiredLives(data);
+      return restoreExpiredLives(data, userId);
     }
   } catch (e) {
     console.error('Error reading lives data:', e);
   }
-  return { ...DEFAULT_LIVES };
+  return { ...DEFAULT_LIVES, userId };
 }
 
 // Restore lives that have been lost for more than 24 hours
-function restoreExpiredLives(data: LivesData): LivesData {
+function restoreExpiredLives(data: LivesData, userId?: string): LivesData {
   const now = Date.now();
   const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
   
@@ -46,19 +46,19 @@ function restoreExpiredLives(data: LivesData): LivesData {
     const newData: LivesData = {
       lives: newLives,
       lostTimes: activeLosses,
-      userId: data.userId,
+      userId,
     };
-    saveLivesData(newData);
+    saveLivesData(newData, userId);
     return newData;
   }
   
   return data;
 }
 
-// Save lives data to localStorage
-export function saveLivesData(data: LivesData): void {
+// Save lives data to localStorage for a specific user
+export function saveLivesData(data: LivesData, userId?: string): void {
   try {
-    localStorage.setItem(LIVES_STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(getLivesStorageKey(userId), JSON.stringify(data));
   } catch (e) {
     console.error('Error saving lives data:', e);
   }
@@ -67,7 +67,7 @@ export function saveLivesData(data: LivesData): void {
 // Lose a life - returns new lives data
 export function loseLife(userId?: string): LivesData {
   // Always get fresh data to ensure we have latest state
-  const currentData = getLocalLivesData();
+  const currentData = getLocalLivesData(userId);
   
   if (currentData.lives <= 0) {
     return currentData;
@@ -79,13 +79,13 @@ export function loseLife(userId?: string): LivesData {
     userId,
   };
   
-  saveLivesData(newData);
+  saveLivesData(newData, userId);
   return newData;
 }
 
 // Get time until next life restore (in milliseconds)
-export function getTimeUntilNextRestore(): number | null {
-  const data = getLocalLivesData();
+export function getTimeUntilNextRestore(userId?: string): number | null {
+  const data = getLocalLivesData(userId);
   
   if (data.lives >= 3 || data.lostTimes.length === 0) {
     return null;
@@ -103,20 +103,20 @@ export function getTimeUntilNextRestore(): number | null {
 }
 
 // Check if user has lives
-export function hasLives(): boolean {
-  const data = getLocalLivesData();
+export function hasLives(userId?: string): boolean {
+  const data = getLocalLivesData(userId);
   return data.lives > 0;
 }
 
 // Get current lives count
-export function getLivesCount(): number {
-  const data = getLocalLivesData();
+export function getLivesCount(userId?: string): number {
+  const data = getLocalLivesData(userId);
   return data.lives;
 }
 
 // Reset lives (for testing or admin purposes)
-export function resetLives(): void {
-  saveLivesData({ ...DEFAULT_LIVES });
+export function resetLives(userId?: string): void {
+  saveLivesData({ ...DEFAULT_LIVES, userId }, userId);
 }
 
 // Format time remaining as string

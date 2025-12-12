@@ -3,6 +3,7 @@ import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getLocalLivesData, getTimeUntilNextRestore, formatTimeRemaining } from '@/lib/livesSystem';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/lib/auth';
 
 interface LivesDisplayProps {
   className?: string;
@@ -10,20 +11,21 @@ interface LivesDisplayProps {
 }
 
 export function LivesDisplay({ className, showTimer = true }: LivesDisplayProps) {
-  const [livesData, setLivesData] = useState(() => getLocalLivesData());
+  const { user } = useAuth();
+  const [livesData, setLivesData] = useState(() => getLocalLivesData(user?.id));
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     // Update lives data periodically
     const updateLives = () => {
-      setLivesData(getLocalLivesData());
-      setTimeRemaining(getTimeUntilNextRestore());
+      setLivesData(getLocalLivesData(user?.id));
+      setTimeRemaining(getTimeUntilNextRestore(user?.id));
     };
 
     updateLives();
     const interval = setInterval(updateLives, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.id]);
 
   const lives = livesData.lives;
 
