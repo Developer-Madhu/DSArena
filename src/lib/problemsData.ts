@@ -19,6 +19,7 @@ export interface ProblemData {
   memoryLimitMb: number;
   visibleTestCases: { input: string; expectedOutput: string }[];
   hiddenTestCases: { input: string; expectedOutput: string }[];
+  language?: 'python' | 'javascript' | 'java' | 'cpp' | 'go' | 'rust' | 'csharp' | 'ruby' | 'swift' | 'kotlin';
 }
 
 // Helper to determine difficulty based on problem complexity
@@ -1202,11 +1203,11 @@ export const topicsData = [
   { name: "Python Track", slug: "python-track", icon: "Code", displayOrder: 19 }
 ];
 
-// Combined problems data including all language tracks
+// Combined problems data including all language tracks with explicit language fields
 export const allProblemsData: ProblemData[] = [
-  ...problemsData, 
-  ...pythonProblemsData,
-  ...javascriptProblemsData,
-  ...javaProblemsData,
-  ...cppProblemsData
+  ...problemsData.map(p => ({ ...p, language: 'python' as const })), // DSA uses Python
+  ...pythonProblemsData.map(p => ({ ...p, language: 'python' as const })),
+  ...javascriptProblemsData.map(p => ({ ...p, language: 'javascript' as const })),
+  ...javaProblemsData.map(p => ({ ...p, language: 'java' as const })),
+  ...cppProblemsData.map(p => ({ ...p, language: 'cpp' as const }))
 ];

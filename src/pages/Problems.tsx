@@ -12,12 +12,8 @@ import {
 } from '@/components/ui/select';
 import { problemsData, topicsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchSolvedProblems } from '@/lib/progressStorage';
 import { Search } from 'lucide-react';
-
-interface UserSolved {
-  problem_id: string;
-}
 
 export default function Problems() {
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
@@ -28,21 +24,14 @@ export default function Problems() {
 
   useEffect(() => {
     if (user) {
-      fetchSolvedProblems();
+      loadSolvedProblems();
     }
   }, [user]);
 
-  const fetchSolvedProblems = async () => {
+  const loadSolvedProblems = async () => {
     if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('user_solved')
-      .select('problem_id')
-      .eq('user_id', user.id);
-
-    if (!error && data) {
-      setSolvedIds(new Set(data.map((d: UserSolved) => d.problem_id)));
-    }
+    const solved = await fetchSolvedProblems(user.id);
+    setSolvedIds(solved);
   };
 
   const filteredProblems = problemsData.filter((problem) => {

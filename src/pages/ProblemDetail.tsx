@@ -56,20 +56,25 @@ export default function ProblemDetail() {
   const problem = allProblemsData.find(p => p.slug === slug);
   const problemIndex = allProblemsData.findIndex(p => p.slug === slug);
   
-  // Determine editor language based on problem category
+  // Determine editor language based on problem's explicit language field or category
   const editorLanguage = useMemo(() => {
     if (!problem) return 'python';
+    
+    // Use explicit language field if available
+    if (problem.language) return problem.language;
+    
+    // Fallback to category-based detection
     const category = problem.category.toLowerCase();
-    if (category.includes('javascript')) return 'javascript';
-    if (category.includes('java') && !category.includes('javascript')) return 'java';
-    if (category.includes('c++') || category.includes('cpp')) return 'cpp';
-    if (category.includes('go ') || category === 'go track') return 'go';
-    if (category.includes('rust')) return 'rust';
-    if (category.includes('c#') || category.includes('csharp')) return 'csharp';
-    if (category.includes('ruby')) return 'ruby';
-    if (category.includes('swift')) return 'swift';
-    if (category.includes('kotlin')) return 'kotlin';
-    if (category.includes('python')) return 'python';
+    if (category === 'javascript track') return 'javascript';
+    if (category === 'java track') return 'java';
+    if (category === 'c++ track') return 'cpp';
+    if (category === 'go track') return 'go';
+    if (category === 'rust track') return 'rust';
+    if (category === 'c# track') return 'csharp';
+    if (category === 'ruby track') return 'ruby';
+    if (category === 'swift track') return 'swift';
+    if (category === 'kotlin track') return 'kotlin';
+    if (category === 'python track') return 'python';
     return 'python'; // Default for DSA problems
   }, [problem]);
   
