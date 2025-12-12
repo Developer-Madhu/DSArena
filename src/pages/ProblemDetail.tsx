@@ -56,6 +56,23 @@ export default function ProblemDetail() {
   const problem = allProblemsData.find(p => p.slug === slug);
   const problemIndex = allProblemsData.findIndex(p => p.slug === slug);
   
+  // Determine editor language based on problem category
+  const editorLanguage = useMemo(() => {
+    if (!problem) return 'python';
+    const category = problem.category.toLowerCase();
+    if (category.includes('javascript')) return 'javascript';
+    if (category.includes('java') && !category.includes('javascript')) return 'java';
+    if (category.includes('c++') || category.includes('cpp')) return 'cpp';
+    if (category.includes('go ') || category === 'go track') return 'go';
+    if (category.includes('rust')) return 'rust';
+    if (category.includes('c#') || category.includes('csharp')) return 'csharp';
+    if (category.includes('ruby')) return 'ruby';
+    if (category.includes('swift')) return 'swift';
+    if (category.includes('kotlin')) return 'kotlin';
+    if (category.includes('python')) return 'python';
+    return 'python'; // Default for DSA problems
+  }, [problem]);
+  
   // Get next problem in same category
   const nextProblem = useMemo(() => {
     if (!problem) return null;
@@ -570,7 +587,7 @@ export default function ProblemDetail() {
                     <CodeEditor
                       value={code}
                       onChange={setCode}
-                      language="python"
+                      language={editorLanguage}
                     />
                   </div>
 
