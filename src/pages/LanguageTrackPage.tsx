@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CompletionCertificate } from '@/components/certificate/CompletionCertificate';
-import { getTrackBySlug, LanguageTrack } from '@/lib/languageTracksData';
+import { getTrackBySlug } from '@/lib/languageTracksData';
 import { ProblemData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
 import { fetchSolvedProblems } from '@/lib/progressStorage';
@@ -13,7 +13,6 @@ import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { 
   CheckCircle2, 
   Trophy, 
-  Code, 
   ChevronRight,
   Sparkles,
   GraduationCap,
@@ -28,13 +27,16 @@ import {
 } from '@/components/ui/dialog';
 
 export default function LanguageTrackPage() {
-  const { slug } = useParams();
+  const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
   const [showCertificate, setShowCertificate] = useState(false);
   const { user } = useAuth();
 
-  const track = getTrackBySlug(slug || '');
+  // Get track from URL path slug
+  const trackSlug = slug || '';
+  const track = getTrackBySlug(trackSlug);
   const problems = track?.problems || [];
 
   useEffect(() => {

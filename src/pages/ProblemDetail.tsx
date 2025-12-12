@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { CodeEditor } from '@/components/editor/CodeEditor';
@@ -51,8 +51,6 @@ export default function ProblemDetail() {
   const [solved, setSolved] = useState(false);
   const [alreadySolved, setAlreadySolved] = useState(false);
   const [noLives, setNoLives] = useState(false);
-  const isActiveRef = useRef(true);
-  const hasLostLifeRef = useRef(false);
 
   // Find problem from local data (includes Python track)
   const problem = allProblemsData.find(p => p.slug === slug);
@@ -98,11 +96,12 @@ export default function ProblemDetail() {
     // Only apply lives system if problem is not already solved
     if (alreadySolved) return;
 
+    let lifeLostThisVisibility = false;
+
     const handleVisibilityChange = () => {
-      if (document.hidden && !hasLostLifeRef.current && !alreadySolved) {
+      if (document.hidden && !alreadySolved && hasLives()) {
         // User switched tabs or minimized - lose a life
         const newLivesData = loseLife(user?.id);
-        hasLostLifeRef.current = true;
         
         if (newLivesData.lives === 0) {
           setNoLives(true);
@@ -117,47 +116,38 @@ export default function ProblemDetail() {
       }
     };
 
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!hasLostLifeRef.current && !alreadySolved) {
-        // User is navigating away - lose a life
-        loseLife(user?.id);
-        hasLostLifeRef.current = true;
-      }
-    };
-
     const handleBlur = () => {
-      if (!hasLostLifeRef.current && !alreadySolved) {
-        // Window lost focus - lose a life
-        const newLivesData = loseLife(user?.id);
-        hasLostLifeRef.current = true;
-        
-        if (newLivesData.lives === 0) {
-          setNoLives(true);
-          toast.error('You lost all your lives! Come back in 24 hours.', {
-            duration: 5000,
-          });
-        } else {
-          toast.warning(`Focus lost! You lost a life. ${newLivesData.lives} remaining.`, {
-            duration: 3000,
-          });
+      if (!alreadySolved && hasLives()) {
+        // Window lost focus - lose a life (only if we still have lives)
+        const currentLives = getLocalLivesData();
+        if (currentLives.lives > 0) {
+          const newLivesData = loseLife(user?.id);
+          
+          if (newLivesData.lives === 0) {
+            setNoLives(true);
+            toast.error('You lost all your lives! Come back in 24 hours.', {
+              duration: 5000,
+            });
+          } else {
+            toast.warning(`Focus lost! You lost a life. ${newLivesData.lives} remaining.`, {
+              duration: 3000,
+            });
+          }
         }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('blur', handleBlur);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('blur', handleBlur);
     };
   }, [user, alreadySolved]);
 
-  // Reset life loss tracking when problem changes
+  // Reset life check when problem changes
   useEffect(() => {
-    hasLostLifeRef.current = false;
     setNoLives(!hasLives());
   }, [slug]);
 

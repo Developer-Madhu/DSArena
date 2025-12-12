@@ -30,9 +30,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/problems" element={<ProtectedRoute><Problems /></ProtectedRoute>} />
             <Route path="/python-track" element={<ProtectedRoute><PythonTrack /></ProtectedRoute>} />
-            <Route path="/javascript-track" element={<ProtectedRoute><LanguageTrackPage /></ProtectedRoute>} />
-            <Route path="/java-track" element={<ProtectedRoute><LanguageTrackPage /></ProtectedRoute>} />
-            <Route path="/cpp-track" element={<ProtectedRoute><LanguageTrackPage /></ProtectedRoute>} />
+            <Route path="/track/:slug" element={<ProtectedRoute><LanguageTrackPage /></ProtectedRoute>} />
             <Route path="/learning-tracks" element={<ProtectedRoute><LearningTracks /></ProtectedRoute>} />
             <Route path="/problem/:slug" element={<ProtectedRoute><ProblemDetail /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

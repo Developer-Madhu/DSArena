@@ -64,8 +64,9 @@ export function saveLivesData(data: LivesData): void {
   }
 }
 
-// Lose a life
+// Lose a life - returns new lives data
 export function loseLife(userId?: string): LivesData {
+  // Always get fresh data to ensure we have latest state
   const currentData = getLocalLivesData();
   
   if (currentData.lives <= 0) {

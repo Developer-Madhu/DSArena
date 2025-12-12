@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,10 +10,10 @@ import { fetchSolvedProblems } from '@/lib/progressStorage';
 import { languageTracks, getAvailableTracks, getComingSoonTracks } from '@/lib/languageTracksData';
 import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { Lock, ArrowRight, CheckCircle2, Code2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export default function LearningTracks() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -33,6 +33,14 @@ export default function LearningTracks() {
       solved,
       percent: (solved / track.totalProblems) * 100
     };
+  };
+
+  const handleTrackClick = (track: typeof languageTracks[0]) => {
+    if (track.id === 'python') {
+      navigate('/python-track');
+    } else {
+      navigate(`/track/${track.slug}`);
+    }
   };
 
   return (
@@ -71,7 +79,11 @@ export default function LearningTracks() {
               const isComplete = solved === track.totalProblems;
 
               return (
-                <Link key={track.id} to={`/${track.slug}`}>
+                <div 
+                  key={track.id} 
+                  onClick={() => handleTrackClick(track)}
+                  className="cursor-pointer"
+                >
                   <Card className="h-full transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
@@ -108,7 +120,7 @@ export default function LearningTracks() {
                       </Button>
                     </CardContent>
                   </Card>
-                </Link>
+                </div>
               );
             })}
           </div>
