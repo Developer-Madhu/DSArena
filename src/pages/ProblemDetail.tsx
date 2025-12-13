@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import { getLocalLivesData, loseLife, hasLives, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
 import { LivesDisplay } from '@/components/lives/LivesDisplay';
+import { GlitchyAssistant } from '@/components/editor/GlitchyAssistant';
+import { LanguageSelector } from '@/components/editor/LanguageSelector';
 
 interface TestCase {
   id: string;
@@ -51,13 +53,22 @@ export default function ProblemDetail() {
   const [solved, setSolved] = useState(false);
   const [alreadySolved, setAlreadySolved] = useState(false);
   const [noLives, setNoLives] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
 
   // Find problem from local data (includes Python track)
   const problem = allProblemsData.find(p => p.slug === slug);
   const problemIndex = allProblemsData.findIndex(p => p.slug === slug);
   
-  // Determine editor language based on problem's explicit language field or category
-  const editorLanguage = useMemo(() => {
+  // Check if this is a DSA problem (allows language selection) or a track problem (fixed language)
+  const isDSAProblem = useMemo(() => {
+    if (!problem) return false;
+    const category = problem.category.toLowerCase();
+    return !category.includes('track');
+  }, [problem]);
+
+  // Determine default language based on problem's explicit language field or category
+  const defaultLanguage = useMemo(() => {
     if (!problem) return 'python';
     
     // Use explicit language field if available
@@ -77,6 +88,16 @@ export default function ProblemDetail() {
     if (category === 'python track') return 'python';
     return 'python'; // Default for DSA problems
   }, [problem]);
+
+  // Final editor language: user selection for DSA, fixed for tracks
+  const editorLanguage = isDSAProblem && selectedLanguage ? selectedLanguage : defaultLanguage;
+
+  // Initialize selected language when problem loads (for DSA problems)
+  useEffect(() => {
+    if (isDSAProblem && !selectedLanguage) {
+      setSelectedLanguage(defaultLanguage);
+    }
+  }, [isDSAProblem, defaultLanguage, selectedLanguage]);
   
   // Get next problem in same category
   const nextProblem = useMemo(() => {
@@ -269,6 +290,7 @@ export default function ProblemDetail() {
     }
     setResults(null);
     setConsoleOutput('');
+    setLastError(null); // Clear previous errors
 
     try {
       const testCasesToRun = submitAll 
@@ -294,6 +316,12 @@ export default function ProblemDetail() {
 
       setResults(data.results);
       setConsoleOutput(data.consoleOutput || '');
+      
+      // Check for any errors in results
+      const errorResult = data.results.find((r: TestResult) => r.error);
+      if (errorResult) {
+        setLastError(errorResult.error);
+      }
 
       const passedCount = data.results.filter((r: TestResult) => r.passed).length;
       const totalCount = data.results.length;
@@ -320,6 +348,7 @@ export default function ProblemDetail() {
       const message = error instanceof Error ? error.message : 'An error occurred';
       toast.error(message);
       setConsoleOutput(message);
+      setLastError(message); // Set error for Glitchy to react
     } finally {
       setRunning(false);
       setSubmitting(false);
@@ -551,7 +580,15 @@ export default function ProblemDetail() {
                           <ChevronRight className="h-4 w-4" />
                         )}
                       </button>
-                      <span className="text-sm font-medium">Python 3.11</span>
+                      {isDSAProblem ? (
+                        <LanguageSelector
+                          value={selectedLanguage || 'python'}
+                          onChange={setSelectedLanguage}
+                          disabled={alreadySolved}
+                        />
+                      ) : (
+                        <span className="text-sm font-medium capitalize">{editorLanguage}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -568,6 +605,16 @@ export default function ProblemDetail() {
 
                   {/* Editor Content */}
                   <div className="flex-1 relative">
+                    {/* Glitchy AI Assistant */}
+                    {!alreadySolved && problem && (
+                      <GlitchyAssistant
+                        code={code}
+                        language={editorLanguage}
+                        problemDescription={problem.description}
+                        lastError={lastError}
+                      />
+                    )}
+                    
                     {alreadySolved && (
                       <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex items-center justify-center">
                         <div className="text-center">

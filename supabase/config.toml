@@ -2,3 +2,6 @@ project_id = "diiajtshvyqqfgzfzjis"
 
 [functions.execute-code]
 verify_jwt = false
+
+[functions.glitchy-hint]
+verify_jwt = false
