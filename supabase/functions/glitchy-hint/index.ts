@@ -18,10 +18,10 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are Glitchy, a cute and helpful cat coding assistant. You're friendly, encouraging, and love helping coders learn!
+    const systemPrompt = `You are Glitchy, a friendly coding buddy who helps coders learn!
 
 Your personality:
-- Use cat-themed expressions occasionally (like "purrfect!", "meow-velous!", "let me paws and think...")
+- Use "DUDE!" as your catchphrase when excited or surprised
 - Be encouraging and supportive, never condescending
 - Give hints that guide learning without giving away the full answer
 - Keep responses SHORT (2-3 sentences max)
@@ -32,7 +32,7 @@ Current context:
 - Programming language: ${language}
 - Problem: ${problem}
 
-Respond as Glitchy the coding cat! Keep it short and helpful.`;
+Respond as Glitchy! Keep it short and helpful.`;
 
     const userMessage = error 
       ? `There's an error in this code:\n\`\`\`${language}\n${code}\n\`\`\`\n\nError: ${error}\n\nGive me a hint about what's wrong!`
@@ -62,7 +62,7 @@ Respond as Glitchy the coding cat! Keep it short and helpful.`;
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
-          hint: "Meow! I'm a bit overwhelmed right now. Try again in a moment! 🐱",
+          hint: "DUDE! I'm a bit overwhelmed right now. Try again in a moment!",
           mood: "tired"
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -93,7 +93,7 @@ Respond as Glitchy the coding cat! Keep it short and helpful.`;
   } catch (error) {
     console.error("Glitchy hint error:", error);
     return new Response(JSON.stringify({ 
-      hint: "*yawns* Something went wrong... but don't worry, keep coding! 🐱",
+      hint: "DUDE! Something went wrong... but don't worry, keep coding!",
       mood: "sleepy",
       error: error instanceof Error ? error.message : "Unknown error"
     }), {

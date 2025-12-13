@@ -60,8 +60,8 @@ export function GlitchyAssistant({ code, language, problemDescription, lastError
       setMood(data.mood || 'happy');
     } catch (err) {
       console.error('Glitchy error:', err);
-      setHint("*purrs* I'm here to help! Keep coding! 🐱");
-      setMood('sleepy');
+      setHint("DUDE! I'm here to help! Keep coding!");
+      setMood('idle');
     } finally {
       setIsLoading(false);
     }
@@ -83,13 +83,7 @@ export function GlitchyAssistant({ code, language, problemDescription, lastError
   };
 
   const getMoodAnimation = () => {
-    switch (mood) {
-      case 'alert': return 'animate-glitchy-alert';
-      case 'thinking': return 'animate-glitchy-think';
-      case 'curious': return 'animate-glitchy-peek';
-      case 'happy': return 'animate-glitchy-happy';
-      default: return 'animate-glitchy-idle';
-    }
+    return ''; // No animations
   };
 
   const getMoodGlow = () => {
