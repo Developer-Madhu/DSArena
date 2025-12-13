@@ -15,11 +15,10 @@ import {
   ArrowRight,
   Code2,
   Loader2,
-  Code,
   BookOpen,
 } from 'lucide-react';
 import { problemsData } from '@/lib/problemsData';
-import { pythonProblemsData, PYTHON_TRACK_TOTAL, getPythonTrackIds } from '@/lib/pythonProblemsData';
+import { getAvailableTracks, LanguageTrack } from '@/lib/languageTracksData';
 
 interface Profile {
   username: string | null;
@@ -29,6 +28,23 @@ interface Profile {
   medium_solved: number;
   hard_solved: number;
   streak_days: number;
+}
+
+interface TrackProgress {
+  track: LanguageTrack;
+  solvedCount: number;
+  solvedByDifficulty: {
+    easy: number;
+    medium: number;
+    hard: number;
+  };
+  counts: {
+    easy: number;
+    medium: number;
+    hard: number;
+    total: number;
+  };
+  progress: number;
 }
 
 export default function Dashboard() {
@@ -83,9 +99,17 @@ export default function Dashboard() {
     return null;
   }
 
-  // Calculate DSA stats (excluding Python Track)
-  const pythonTrackIds = new Set(getPythonTrackIds());
-  const dsaProblems = problemsData.filter(p => !pythonTrackIds.has(p.id));
+  // Get all available language tracks
+  const availableTracks = getAvailableTracks();
+  
+  // Get all track problem IDs to exclude from DSA
+  const allTrackProblemIds = new Set<string>();
+  availableTracks.forEach(track => {
+    track.problems?.forEach(p => allTrackProblemIds.add(p.id));
+  });
+
+  // Calculate DSA stats (excluding all language track problems)
+  const dsaProblems = problemsData.filter(p => !allTrackProblemIds.has(p.id));
   const dsaSolvedCount = [...solvedIds].filter(id => 
     dsaProblems.some(p => p.id === id)
   ).length;
@@ -101,24 +125,38 @@ export default function Dashboard() {
     hard: [...solvedIds].filter(id => dsaProblems.find(p => p.id === id && p.difficulty === 'hard')).length,
   };
 
-  // Calculate Python Track stats
-  const pythonSolvedCount = pythonProblemsData.filter(p => solvedIds.has(p.id)).length;
-  const pythonCounts = {
-    easy: pythonProblemsData.filter(p => p.difficulty === 'easy').length,
-    medium: pythonProblemsData.filter(p => p.difficulty === 'medium').length,
-    hard: pythonProblemsData.filter(p => p.difficulty === 'hard').length,
-    total: PYTHON_TRACK_TOTAL,
-  };
-  const pythonSolvedByDifficulty = {
-    easy: pythonProblemsData.filter(p => p.difficulty === 'easy' && solvedIds.has(p.id)).length,
-    medium: pythonProblemsData.filter(p => p.difficulty === 'medium' && solvedIds.has(p.id)).length,
-    hard: pythonProblemsData.filter(p => p.difficulty === 'hard' && solvedIds.has(p.id)).length,
-  };
+  // Calculate progress for each language track
+  const trackProgressData: TrackProgress[] = availableTracks.map(track => {
+    const trackProblems = track.problems || [];
+    const solvedCount = trackProblems.filter(p => solvedIds.has(p.id)).length;
+    const counts = {
+      easy: trackProblems.filter(p => p.difficulty === 'easy').length,
+      medium: trackProblems.filter(p => p.difficulty === 'medium').length,
+      hard: trackProblems.filter(p => p.difficulty === 'hard').length,
+      total: track.totalProblems,
+    };
+    const solvedByDifficulty = {
+      easy: trackProblems.filter(p => p.difficulty === 'easy' && solvedIds.has(p.id)).length,
+      medium: trackProblems.filter(p => p.difficulty === 'medium' && solvedIds.has(p.id)).length,
+      hard: trackProblems.filter(p => p.difficulty === 'hard' && solvedIds.has(p.id)).length,
+    };
+    const progress = counts.total > 0 ? (solvedCount / counts.total) * 100 : 0;
 
-  const totalSolved = dsaSolvedCount + pythonSolvedCount;
-  const totalProblems = dsaCounts.total + pythonCounts.total;
+    return {
+      track,
+      solvedCount,
+      solvedByDifficulty,
+      counts,
+      progress,
+    };
+  });
+
+  const totalTracksSolved = trackProgressData.reduce((sum, t) => sum + t.solvedCount, 0);
+  const totalTracksProblems = trackProgressData.reduce((sum, t) => sum + t.counts.total, 0);
+  const totalSolved = dsaSolvedCount + totalTracksSolved;
+  const totalProblems = dsaCounts.total + totalTracksProblems;
   const dsaProgress = dsaCounts.total > 0 ? (dsaSolvedCount / dsaCounts.total) * 100 : 0;
-  const pythonProgress = pythonCounts.total > 0 ? (pythonSolvedCount / pythonCounts.total) * 100 : 0;
+  const overallTracksProgress = totalTracksProblems > 0 ? (totalTracksSolved / totalTracksProblems) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -181,39 +219,38 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-                Python Track
+                Learning Tracks
               </CardTitle>
               <Target className="h-4 w-4 sm:h-5 sm:w-5 text-success" />
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="text-2xl sm:text-3xl font-bold">{pythonProgress.toFixed(0)}%</div>
-              <Progress value={pythonProgress} className="mt-2 h-1.5 sm:h-2" />
+              <div className="text-2xl sm:text-3xl font-bold">{overallTracksProgress.toFixed(0)}%</div>
+              <Progress value={overallTracksProgress} className="mt-2 h-1.5 sm:h-2" />
             </CardContent>
           </Card>
         </div>
 
-        {/* Two Column Progress */}
-        <div className="grid gap-4 sm:gap-8 lg:grid-cols-2">
-          {/* DSA Problems Progress */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-6">
-              <div className="flex items-center gap-2">
-                <Code2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">DSA Problems</CardTitle>
-              </div>
-              <Link to="/problems">
-                <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
-                  View all
-                  <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <span className="text-xl sm:text-2xl font-bold">{dsaSolvedCount}</span>
-                <span className="text-sm sm:text-base text-muted-foreground">/ {dsaCounts.total} solved</span>
-              </div>
-              
+        {/* DSA Problems Progress */}
+        <Card className="mb-6 sm:mb-8">
+          <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-6">
+            <div className="flex items-center gap-2">
+              <Code2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              <CardTitle className="text-base sm:text-lg">DSA Problems</CardTitle>
+            </div>
+            <Link to="/problems">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
+                View all
+                <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <span className="text-xl sm:text-2xl font-bold">{dsaSolvedCount}</span>
+              <span className="text-sm sm:text-base text-muted-foreground">/ {dsaCounts.total} solved</span>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <div className="mb-2 flex items-center justify-between text-xs sm:text-sm">
                   <span className="text-success">Easy</span>
@@ -250,74 +287,67 @@ export default function Dashboard() {
                   className="h-1.5 sm:h-2 bg-destructive/20"
                 />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Python Track Progress */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-6">
-              <div className="flex items-center gap-2">
-                <Code className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                <CardTitle className="text-base sm:text-lg">Python Learning Track</CardTitle>
-              </div>
-              <Link to="/python-track">
-                <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
-                  View all
-                  <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <span className="text-xl sm:text-2xl font-bold">{pythonSolvedCount}</span>
-                <span className="text-sm sm:text-base text-muted-foreground">/ {pythonCounts.total} solved</span>
-              </div>
+        {/* Language Tracks Progress Grid */}
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-lg sm:text-xl font-bold mb-4">Learning Tracks Progress</h2>
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-2">
+            {trackProgressData.map(({ track, solvedCount, solvedByDifficulty, counts, progress }) => (
+              <Card key={track.id}>
+                <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">{track.icon}</span>
+                    <CardTitle className="text-base sm:text-lg">{track.name} Track</CardTitle>
+                  </div>
+                  <Link to={`/${track.slug}`}>
+                    <Button variant="ghost" size="sm" className="text-xs sm:text-sm">
+                      View all
+                      <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    </Button>
+                  </Link>
+                </CardHeader>
+                <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <span className="text-xl sm:text-2xl font-bold">{solvedCount}</span>
+                    <span className="text-sm sm:text-base text-muted-foreground">/ {counts.total} solved</span>
+                  </div>
 
-              {pythonSolvedCount === PYTHON_TRACK_TOTAL && (
-                <div className="rounded-lg bg-success/10 border border-success/30 p-2 sm:p-3 text-center mb-3 sm:mb-4">
-                  <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-success mx-auto mb-1" />
-                  <p className="text-success font-medium text-xs sm:text-sm">Track Completed! 🎉</p>
-                </div>
-              )}
-              
-              <div>
-                <div className="mb-2 flex items-center justify-between text-xs sm:text-sm">
-                  <span className="text-success">🟢 Beginner</span>
-                  <span className="text-muted-foreground">
-                    {pythonSolvedByDifficulty.easy} / {pythonCounts.easy}
-                  </span>
-                </div>
-                <Progress
-                  value={pythonCounts.easy > 0 ? (pythonSolvedByDifficulty.easy / pythonCounts.easy) * 100 : 0}
-                  className="h-1.5 sm:h-2 bg-success/20"
-                />
-              </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between text-xs sm:text-sm">
-                  <span className="text-warning">🟡 Intermediate</span>
-                  <span className="text-muted-foreground">
-                    {pythonSolvedByDifficulty.medium} / {pythonCounts.medium}
-                  </span>
-                </div>
-                <Progress
-                  value={pythonCounts.medium > 0 ? (pythonSolvedByDifficulty.medium / pythonCounts.medium) * 100 : 0}
-                  className="h-1.5 sm:h-2 bg-warning/20"
-                />
-              </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between text-xs sm:text-sm">
-                  <span className="text-destructive">🔴 Advanced</span>
-                  <span className="text-muted-foreground">
-                    {pythonSolvedByDifficulty.hard} / {pythonCounts.hard}
-                  </span>
-                </div>
-                <Progress
-                  value={pythonCounts.hard > 0 ? (pythonSolvedByDifficulty.hard / pythonCounts.hard) * 100 : 0}
-                  className="h-1.5 sm:h-2 bg-destructive/20"
-                />
-              </div>
-            </CardContent>
-          </Card>
+                  {solvedCount === counts.total && counts.total > 0 && (
+                    <div className="rounded-lg bg-success/10 border border-success/30 p-2 sm:p-3 text-center mb-3 sm:mb-4">
+                      <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-success mx-auto mb-1" />
+                      <p className="text-success font-medium text-xs sm:text-sm">Track Completed! 🎉</p>
+                    </div>
+                  )}
+
+                  <div className="mb-3">
+                    <div className="mb-2 flex items-center justify-between text-xs sm:text-sm">
+                      <span className="text-muted-foreground">Overall Progress</span>
+                      <span className="font-medium">{progress.toFixed(0)}%</span>
+                    </div>
+                    <Progress value={progress} className="h-2 sm:h-3" />
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-success/10 p-2">
+                      <p className="text-xs text-muted-foreground">Beginner</p>
+                      <p className="text-sm font-bold text-success">{solvedByDifficulty.easy}/{counts.easy}</p>
+                    </div>
+                    <div className="rounded-lg bg-warning/10 p-2">
+                      <p className="text-xs text-muted-foreground">Intermediate</p>
+                      <p className="text-sm font-bold text-warning">{solvedByDifficulty.medium}/{counts.medium}</p>
+                    </div>
+                    <div className="rounded-lg bg-destructive/10 p-2">
+                      <p className="text-xs text-muted-foreground">Advanced</p>
+                      <p className="text-sm font-bold text-destructive">{solvedByDifficulty.hard}/{counts.hard}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
         {/* CTA */}
@@ -336,10 +366,10 @@ export default function Dashboard() {
                   DSA Problems
                 </Button>
               </Link>
-              <Link to="/python-track" className="w-full sm:w-auto">
+              <Link to="/learning-tracks" className="w-full sm:w-auto">
                 <Button variant="hero" size="default" className="w-full sm:w-auto">
-                  <Code className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  Python Track
+                  <Target className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  Learning Tracks
                 </Button>
               </Link>
             </div>
