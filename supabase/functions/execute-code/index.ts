@@ -13,6 +13,7 @@ interface TestCase {
 interface ExecuteRequest {
   code: string;
   testCases: TestCase[];
+  language?: string;
 }
 
 interface TestResult {
@@ -22,31 +23,30 @@ interface TestResult {
   runtime_ms?: number;
 }
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+// Piston API language mappings
+const languageConfig: Record<string, { language: string; version: string; fileName: string }> = {
+  python: { language: 'python', version: '3.10.0', fileName: 'main.py' },
+  javascript: { language: 'javascript', version: '18.15.0', fileName: 'main.js' },
+  java: { language: 'java', version: '15.0.2', fileName: 'Main.java' },
+  cpp: { language: 'c++', version: '10.2.0', fileName: 'main.cpp' },
+  go: { language: 'go', version: '1.16.2', fileName: 'main.go' },
+  rust: { language: 'rust', version: '1.68.2', fileName: 'main.rs' },
+  csharp: { language: 'csharp', version: '6.12.0', fileName: 'Main.cs' },
+  ruby: { language: 'ruby', version: '3.0.1', fileName: 'main.rb' },
+  swift: { language: 'swift', version: '5.3.3', fileName: 'main.swift' },
+  kotlin: { language: 'kotlin', version: '1.8.20', fileName: 'main.kt' },
+};
 
-  try {
-    const { code, testCases }: ExecuteRequest = await req.json();
-
-    console.log('Executing code with', testCases.length, 'test cases');
-
-    const results: TestResult[] = [];
-    let consoleOutput = '';
-
-    for (const testCase of testCases) {
-      const startTime = Date.now();
-
-      try {
-        // Wrap user code to handle input and capture output
-        const wrappedCode = `
+// Wrap code for different languages to handle input
+function wrapCodeForLanguage(code: string, input: string, language: string): string {
+  switch (language) {
+    case 'python':
+      return `
 import sys
 from io import StringIO
 
 # Capture input
-input_data = """${testCase.input}"""
+input_data = """${input}"""
 input_lines = input_data.strip().split('\\n')
 input_index = 0
 
@@ -64,6 +64,93 @@ input = custom_input
 # User code starts here
 ${code}
 `;
+    case 'javascript':
+      return `
+const inputData = \`${input}\`.trim().split('\\n');
+let inputIndex = 0;
+
+function readline() {
+  if (inputIndex < inputData.length) {
+    return inputData[inputIndex++];
+  }
+  return '';
+}
+
+function print(...args) {
+  console.log(...args);
+}
+
+// User code starts here
+${code}
+`;
+    case 'java':
+      // For Java, we don't wrap - assume user handles Scanner
+      return code;
+    case 'cpp':
+      // For C++, we don't wrap - assume user handles cin
+      return code;
+    case 'go':
+      // For Go, we don't wrap - assume user handles bufio
+      return code;
+    case 'rust':
+      // For Rust, we don't wrap - assume user handles stdin
+      return code;
+    case 'csharp':
+      // For C#, we don't wrap - assume user handles Console.ReadLine
+      return code;
+    case 'ruby':
+      return `
+$input_data = <<~INPUT
+${input}
+INPUT
+$input_lines = $input_data.strip.split("\\n")
+$input_index = 0
+
+def gets
+  if $input_index < $input_lines.length
+    result = $input_lines[$input_index]
+    $input_index += 1
+    result + "\\n"
+  else
+    nil
+  end
+end
+
+# User code starts here
+${code}
+`;
+    case 'swift':
+      // For Swift, we don't wrap - assume user handles readLine()
+      return code;
+    case 'kotlin':
+      // For Kotlin, we don't wrap - assume user handles readLine()
+      return code;
+    default:
+      return code;
+  }
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { code, testCases, language = 'python' }: ExecuteRequest = await req.json();
+
+    console.log(`Executing ${language} code with`, testCases.length, 'test cases');
+
+    const config = languageConfig[language] || languageConfig.python;
+    const results: TestResult[] = [];
+    let consoleOutput = '';
+
+    for (const testCase of testCases) {
+      const startTime = Date.now();
+
+      try {
+        // Wrap user code based on language
+        const wrappedCode = wrapCodeForLanguage(code, testCase.input, language);
 
         // Call Piston API for code execution
         const pistonResponse = await fetch('https://emkc.org/api/v2/piston/execute', {
@@ -72,11 +159,11 @@ ${code}
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            language: 'python',
-            version: '3.10.0',
+            language: config.language,
+            version: config.version,
             files: [
               {
-                name: 'main.py',
+                name: config.fileName,
                 content: wrappedCode,
               },
             ],
@@ -91,7 +178,15 @@ ${code}
         const endTime = Date.now();
         const runtime = endTime - startTime;
 
-        if (pistonResult.run?.stderr) {
+        // Check for compile errors first
+        if (pistonResult.compile?.stderr) {
+          results.push({
+            passed: false,
+            error: `Compile Error: ${pistonResult.compile.stderr}`,
+            runtime_ms: runtime,
+          });
+          consoleOutput += `Compile error:\n${pistonResult.compile.stderr}\n`;
+        } else if (pistonResult.run?.stderr) {
           results.push({
             passed: false,
             error: pistonResult.run.stderr,
@@ -125,7 +220,7 @@ ${code}
     }
 
     const passedCount = results.filter(r => r.passed).length;
-    consoleOutput = `Passed ${passedCount}/${results.length} test cases\n\n` + consoleOutput;
+    consoleOutput = `[${config.language.toUpperCase()}] Passed ${passedCount}/${results.length} test cases\n\n` + consoleOutput;
 
     return new Response(
       JSON.stringify({ results, consoleOutput }),

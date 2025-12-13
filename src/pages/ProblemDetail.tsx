@@ -281,7 +281,7 @@ export default function ProblemDetail() {
       }));
 
       const { data, error } = await supabase.functions.invoke('execute-code', {
-        body: { code, testCases: formattedTestCases },
+        body: { code, testCases: formattedTestCases, language: editorLanguage },
       });
 
       if (error) {
