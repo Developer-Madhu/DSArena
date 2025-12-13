@@ -96,42 +96,33 @@ export function GlitchyAssistant({ code, language, problemDescription, lastError
   };
 
   return (
-    <div className="absolute -top-8 right-4 z-50">
-      {/* Glitchy Avatar - Peeking from border like Snapchat */}
+    <div className="relative z-50">
+      {/* Glitchy Avatar */}
       <div 
-        className={cn(
-          "relative cursor-pointer transition-all duration-300 ease-out group",
-          getMoodAnimation()
-        )}
+        className="relative cursor-pointer transition-all duration-300 ease-out group"
         onClick={handleGlitchyClick}
       >
-        {/* Avatar Container - Positioned to peek over edge */}
+        {/* Avatar Container - Full image display */}
         <div 
           className={cn(
-            "relative w-16 h-16 rounded-full overflow-hidden transition-all duration-300",
-            "border-3 border-primary/70 hover:border-primary",
+            "relative w-12 h-12 rounded-full overflow-hidden transition-all duration-300",
+            "border-2 border-primary/70 hover:border-primary",
             getMoodGlow(),
             "hover:scale-110",
             mood === 'alert' && "border-destructive"
           )}
-          style={{
-            clipPath: 'inset(25% 0 0 0 round 0 0 50% 50%)'
-          }}
         >
-          {/* The peeking avatar image */}
+          {/* The avatar image - no cropping */}
           <img 
             src={glitchyAvatar} 
             alt="Glitchy Assistant" 
-            className={cn(
-              "w-full h-full object-cover object-top transition-transform duration-300",
-              isVisible ? "translate-y-0" : "translate-y-2"
-            )}
+            className="w-full h-full object-cover"
           />
           
           {/* Overlay effects based on mood */}
           <div className={cn(
             "absolute inset-0 pointer-events-none transition-opacity duration-300",
-            mood === 'alert' && "bg-destructive/20 animate-pulse",
+            mood === 'alert' && "bg-destructive/20",
             mood === 'thinking' && "bg-primary/10",
             mood === 'happy' && "bg-primary/5"
           )} />
@@ -139,7 +130,7 @@ export function GlitchyAssistant({ code, language, problemDescription, lastError
         
         {/* Loading Spinner Overlay */}
         {isLoading && (
-          <div className="absolute inset-0 flex items-end justify-center pb-1">
+          <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}

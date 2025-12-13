@@ -756,22 +756,7 @@ class Program {
                         <span className="text-sm font-medium capitalize">{editorLanguage}</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={saveDraft}
-                        disabled={!user}
-                      >
-                        <Save className="mr-2 h-4 w-4" />
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Editor Content */}
-                  <div className="flex-1 relative">
-                    {/* Glitchy AI Assistant */}
+                    {/* Glitchy AI Assistant - positioned in header */}
                     {!alreadySolved && problem && (
                       <GlitchyAssistant
                         code={code}
@@ -780,6 +765,10 @@ class Program {
                         lastError={lastError}
                       />
                     )}
+                  </div>
+
+                  {/* Editor Content */}
+                  <div className="flex-1 relative">
                     
                     {alreadySolved && (
                       <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex items-center justify-center">
