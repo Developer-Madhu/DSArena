@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
-import { topics, videoLibrary } from '@/lib/videosData';
+import { topics, videoLibrary, topicPlaylists } from '@/lib/videosData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -72,7 +72,13 @@ export default function VideosIndexPage() {
 
                 <div className="p-3 flex items-center justify-between">
                   <div className="text-sm text-muted-foreground">Curated playlist</div>
-                  <Button {...({ variant: 'ghost', size: 'sm' } as any)}>Explore →</Button>
+                  <div className="flex items-center gap-2">
+                    {topicPlaylists[c.name] ? (
+                      <a href={topicPlaylists[c.name]} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">Open playlist</a>
+                    ) : (
+                      <Button {...({ variant: 'ghost', size: 'sm' } as any)}>Explore →</Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </Link>

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { VideoPlayer } from '@/components/video/VideoPlayer';
-import { getVideosByTopicSlug, getTopicNameFromSlug } from '@/lib/videosData';
+import { getVideosByTopicSlug, getTopicNameFromSlug, topicPlaylists } from '@/lib/videosData';
 import { Button } from '@/components/ui/button';
 import { sanitizeTitle } from '@/lib/utils';
 
@@ -45,6 +45,11 @@ export default function VideosTopicPage() {
                   <div>
                     <CardTitle className="text-lg sm:text-xl">{topicName}</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">{videos.length} lessons</p>
+                    {topicPlaylists[topicName] && (
+                      <div className="mt-2">
+                        <a href={topicPlaylists[topicName]} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">Open playlist on YouTube</a>
+                      </div>
+                    )}
                   </div>
                   <div className="max-w-xs w-full">
                     <input

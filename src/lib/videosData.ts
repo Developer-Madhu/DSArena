@@ -784,6 +784,11 @@ export const videoLibrary: VideoItem[] = [
 
 export const topics = ['Arrays', 'Linked Lists', 'Stacks & Queues', 'Trees', 'Graphs', 'Dynamic Programming'];
 
+// Optional playlist links per topic (external YouTube playlist URLs)
+export const topicPlaylists: Record<string, string> = {
+  'Linked Lists': 'https://youtube.com/playlist?list=PLqM7alHXFySH41ZxzrPNj2pAYPOI8ITe7&si=DimItKuE0T8isBou',
+};
+
 export function getVideosByTopicSlug(slug: string) {
   const normalized = slug.replace(/-/g, ' ').toLowerCase();
   return videoLibrary.filter((v) => v.topic.toLowerCase() === normalized);
