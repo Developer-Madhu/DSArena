@@ -74,7 +74,6 @@ export default function VideosTopicPage() {
 
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{v.title}</div>
-                        {v.description && <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{v.description}</div>}
                       </div>
                     </button>
                   ))}

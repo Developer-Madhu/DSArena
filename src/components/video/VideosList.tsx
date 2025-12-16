@@ -39,7 +39,6 @@ export function VideosList({ videos, onSelect }: Props) {
                 </Button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{v.description}</p>
           </div>
         </div>
       ))}
