@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { VideosList } from '@/components/video/VideosList';
 import { VideoPlayer } from '@/components/video/VideoPlayer';
 import { getVideosByTopicSlug, getTopicNameFromSlug } from '@/lib/videosData';
 import { Button } from '@/components/ui/button';
@@ -110,18 +109,7 @@ export default function VideosTopicPage() {
                     )}
                   </CardContent>
                 </Card>
-              </div>
 
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>About this lesson</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{current?.description || 'No description available.'}</p>
-                  </CardContent>
-                </Card>
-              </div>
             </div>
           </section>
         </div>
