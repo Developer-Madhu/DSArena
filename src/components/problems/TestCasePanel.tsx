@@ -37,32 +37,43 @@ export function TestCasePanel({
   return (
     <div className="flex h-full flex-col rounded-lg border border-border bg-card">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
-        <div className="border-b border-border px-4">
-          <TabsList className="h-12 bg-transparent">
-            <TabsTrigger
-              value="testcases"
-              className="data-[state=active]:bg-secondary"
-            >
-              Test Cases
-            </TabsTrigger>
-            <TabsTrigger
-              value="results"
-              className="data-[state=active]:bg-secondary"
-            >
-              Results
-              {results && (
-                <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">
-                  {results.filter((r) => r.passed).length}/{results.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger
-              value="console"
-              className="data-[state=active]:bg-secondary"
-            >
-              Console
-            </TabsTrigger>
-          </TabsList>
+        {/* Tab Header */}
+        <div className="border-b border-border px-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <TabsList className="h-12 bg-transparent">
+              <TabsTrigger
+                value="testcases"
+                className="data-[state=active]:bg-secondary"
+              >
+                Test Cases
+              </TabsTrigger>
+              <TabsTrigger
+                value="results"
+                className="data-[state=active]:bg-secondary"
+              >
+                Results
+                {results && (
+                  <span className="ml-2 rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">
+                    {results.filter((r) => r.passed).length}/{results.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="console"
+                className="data-[state=active]:bg-secondary"
+              >
+                Console
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Status indicator */}
+            {isRunning && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                <span>Running...</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <TabsContent value="testcases" className="flex-1 p-0 mt-0">

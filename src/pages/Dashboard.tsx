@@ -4,6 +4,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { fetchSolvedProblems } from '@/lib/progressStorage';
@@ -16,9 +17,18 @@ import {
   Code2,
   Loader2,
   BookOpen,
+  Star,
+  Zap,
+  Calendar,
+  Award,
+  TrendingUp,
+  Crown,
+  Gem,
+  Medal,
 } from 'lucide-react';
 import { problemsData } from '@/lib/problemsData';
 import { getAvailableTracks, LanguageTrack } from '@/lib/languageTracksData';
+import { cn } from '@/lib/utils';
 
 interface Profile {
   username: string | null;
@@ -229,6 +239,157 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Achievement Badges & Streak Milestones */}
+        <Card className="mb-6 sm:mb-8">
+          <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-6">
+            <div className="flex items-center gap-2">
+              <Award className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              <CardTitle className="text-base sm:text-lg">Achievements & Badges</CardTitle>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              Keep coding to earn more!
+            </Badge>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6">
+            {/* Streak Badges */}
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Flame className="h-4 w-4 text-warning" />
+                Streak Milestones
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {[
+                  { days: 1, icon: <Zap className="h-4 w-4" />, name: "First Step", earned: profile.streak_days >= 1 },
+                  { days: 3, icon: <Star className="h-4 w-4" />, name: "Getting Started", earned: profile.streak_days >= 3 },
+                  { days: 7, icon: <Calendar className="h-4 w-4" />, name: "Week Warrior", earned: profile.streak_days >= 7 },
+                  { days: 14, icon: <TrendingUp className="h-4 w-4" />, name: "Consistent Coder", earned: profile.streak_days >= 14 },
+                  { days: 30, icon: <Crown className="h-4 w-4" />, name: "Coding Champion", earned: profile.streak_days >= 30 },
+                  { days: 100, icon: <Gem className="h-4 w-4" />, name: "Master of Code", earned: profile.streak_days >= 100 },
+                ].map((badge, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      'relative rounded-lg border p-3 text-center transition-all',
+                      badge.earned
+                        ? 'border-warning/30 bg-warning/10 text-warning'
+                        : 'border-border bg-muted/30 text-muted-foreground'
+                    )}
+                  >
+                    {badge.earned && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-warning rounded-full flex items-center justify-center">
+                        <CheckCircle2 className="h-2 w-2 text-warning-foreground" />
+                      </div>
+                    )}
+                    <div className="flex justify-center mb-1">
+                      {badge.icon}
+                    </div>
+                    <div className="text-xs font-medium">{badge.days} days</div>
+                    <div className="text-[10px] text-muted-foreground">{badge.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Problem Solving Badges */}
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-primary" />
+                Problem Solving Achievements
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {[
+                  { count: 1, icon: <Medal className="h-4 w-4" />, name: "First Solve", earned: totalSolved >= 1 },
+                  { count: 10, icon: <Trophy className="h-4 w-4" />, name: "10 Problems", earned: totalSolved >= 10 },
+                  { count: 25, icon: <Star className="h-4 w-4" />, name: "Quarter Century", earned: totalSolved >= 25 },
+                  { count: 50, icon: <Award className="h-4 w-4" />, name: "Half Century", earned: totalSolved >= 50 },
+                  { count: 100, icon: <Crown className="h-4 w-4" />, name: "Century Club", earned: totalSolved >= 100 },
+                  { count: dsaCounts.total, icon: <Gem className="h-4 w-4" />, name: "DSA Master", earned: dsaSolvedCount === dsaCounts.total },
+                ].map((badge, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      'relative rounded-lg border p-3 text-center transition-all',
+                      badge.earned
+                        ? 'border-primary/30 bg-primary/10 text-primary'
+                        : 'border-border bg-muted/30 text-muted-foreground'
+                    )}
+                  >
+                    {badge.earned && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                        <CheckCircle2 className="h-2 w-2 text-primary-foreground" />
+                      </div>
+                    )}
+                    <div className="flex justify-center mb-1">
+                      {badge.icon}
+                    </div>
+                    <div className="text-xs font-medium">
+                      {typeof badge.count === 'number' && badge.count < 1000 ? badge.count : 'All'}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">{badge.name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Difficulty Badges */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Target className="h-4 w-4 text-success" />
+                Difficulty Mastery
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { difficulty: 'easy', solved: dsaSolvedByDifficulty.easy, total: dsaCounts.easy, color: 'success', bgClass: 'bg-success', borderClass: 'border-success', progressClass: 'bg-success/20' },
+                  { difficulty: 'medium', solved: dsaSolvedByDifficulty.medium, total: dsaCounts.medium, color: 'warning', bgClass: 'bg-warning', borderClass: 'border-warning', progressClass: 'bg-warning/20' },
+                  { difficulty: 'hard', solved: dsaSolvedByDifficulty.hard, total: dsaCounts.hard, color: 'destructive', bgClass: 'bg-destructive', borderClass: 'border-destructive', progressClass: 'bg-destructive/20' },
+                ].map((difficulty, index) => {
+                  const percentage = difficulty.total > 0 ? (difficulty.solved / difficulty.total) * 100 : 0;
+                  const isMastered = difficulty.solved === difficulty.total && difficulty.total > 0;
+                  
+                  return (
+                    <div
+                      key={index}
+                      className={cn(
+                        'rounded-lg border p-4 transition-all',
+                        isMastered
+                          ? `${difficulty.borderClass}/30 bg-${difficulty.color}/10`
+                          : 'border-border bg-muted/30'
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            'w-3 h-3 rounded-full',
+                            difficulty.bgClass
+                          )}></div>
+                          <span className="text-sm font-medium capitalize">{difficulty.difficulty}</span>
+                        </div>
+                        {isMastered && (
+                          <Crown className="h-4 w-4 text-warning" />
+                        )}
+                      </div>
+                      <div className="text-lg font-bold mb-1">
+                        {difficulty.solved}/{difficulty.total}
+                      </div>
+                      <Progress 
+                        value={percentage} 
+                        className={cn(
+                          'h-2',
+                          difficulty.progressClass
+                        )} 
+                      />
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {percentage.toFixed(0)}% complete
+                        {isMastered && " • Mastered!"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* DSA Problems Progress */}
         <Card className="mb-6 sm:mb-8">

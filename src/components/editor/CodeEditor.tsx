@@ -111,32 +111,57 @@ export function CodeEditor({
   }, []);
 
   return (
-    <div className="h-full w-full overflow-hidden rounded-lg border border-border bg-card">
-      <Editor
-        height={height}
-        language={language}
-        value={value}
-        onChange={handleChange}
-        onMount={handleEditorMount}
-        theme="vs-dark"
-        options={{
-          readOnly,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          fontSize: 14,
-          lineNumbers: 'on',
-          renderLineHighlight: 'line',
-          automaticLayout: true,
-          tabSize: 4,
-          insertSpaces: true,
-          wordWrap: 'on',
-        }}
-        loading={
-          <div className="flex h-full items-center justify-center bg-card">
-            <div className="text-muted-foreground">Loading editor...</div>
-          </div>
-        }
-      />
+    <div className="h-full w-full flex flex-col overflow-hidden rounded-lg border border-border bg-card">
+      {/* Editor Header */}
+      <div className="border-b border-border bg-muted/30 px-3 py-2 flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">
+          {language.charAt(0).toUpperCase() + language.slice(1)} Editor
+        </span>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Lines: {value.split('\n').length}</span>
+          <span>•</span>
+          <span>Chars: {value.length}</span>
+        </div>
+      </div>
+      
+      {/* Scrollable Editor Container */}
+      <div className="flex-1 relative overflow-hidden">
+        <Editor
+          height="100%"
+          language={language}
+          value={value}
+          onChange={handleChange}
+          onMount={handleEditorMount}
+          theme="vs-dark"
+          options={{
+            readOnly,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: true, // Allow scrolling beyond last line
+            fontSize: 14,
+            lineNumbers: 'on',
+            renderLineHighlight: 'line',
+            automaticLayout: true,
+            tabSize: 4,
+            insertSpaces: true,
+            wordWrap: 'on',
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'visible',
+              useShadows: false,
+              verticalHasArrows: false,
+              horizontalHasArrows: false,
+              verticalScrollbarSize: 10,
+              horizontalScrollbarSize: 10,
+            },
+            padding: { top: 16, bottom: 16 },
+          }}
+          loading={
+            <div className="flex h-full items-center justify-center bg-card">
+              <div className="text-muted-foreground">Loading editor...</div>
+            </div>
+          }
+        />
+      </div>
     </div>
   );
 }
