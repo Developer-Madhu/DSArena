@@ -643,15 +643,7 @@ class Program {
               {/* Problem Content */}
               <ScrollArea className="flex-1">
                 <div className="space-y-6 p-4">
-                  {/* Description */}
-                  <div>
-                    <h3 className="mb-2 font-semibold">Description</h3>
-                    <div className="prose prose-invert max-w-none text-sm text-foreground">
-                      <p className="whitespace-pre-wrap">{problem.description}</p>
-                    </div>
-                  </div>
-
-                  {/* AI Story Generator */}
+                  {/* AI Story-Based Explanation */}
                   <StoryGenerator 
                     problem={{
                       id: problem.id,
@@ -662,10 +654,17 @@ class Program {
                       language: editorLanguage
                     }}
                     onStoryGenerated={(story) => {
-                      // You can store the story or display it in a modal/sidebar
                       console.log('Story generated:', story);
                     }}
                   />
+
+                  {/* Technical Details */}
+                  <div className="mt-6">
+                    <h3 className="mb-2 font-semibold">Technical Details</h3>
+                    <div className="prose prose-invert max-w-none text-sm text-foreground">
+                      <p className="whitespace-pre-wrap text-muted-foreground">{problem.description}</p>
+                    </div>
+                  </div>
 
                   {/* Input Format */}
                   {problem.inputFormat && (

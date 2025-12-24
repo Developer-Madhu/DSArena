@@ -102,7 +102,7 @@ class AIStoryGenerator {
     const { problemTitle, problemDescription, difficulty, category } = options;
     
     return `
-Create an engaging story-based explanation for the following coding problem. The story should be relatable, fun, and help beginners understand the problem in a real-world context.
+Create a story-based explanation for the following coding problem. The story should help learners understand the problem in a real-world context without using emojis or special characters.
 
 Problem Title: ${problemTitle}
 Difficulty: ${difficulty}
@@ -111,16 +111,16 @@ Category: ${category}
 Original Problem Description:
 ${problemDescription}
 
-Please create a story that:
-1. Sets up a real-world scenario where this problem naturally occurs
-2. Explains the challenge in an intuitive way
-3. Includes characters or situations that make it memorable
-4. Connects the story to the technical solution
-5. Maintains educational value while being entertaining
+Please create a narrative that:
+1. Sets up a realistic scenario where this problem naturally occurs
+2. Explains the challenge in an intuitive, relatable way
+3. Uses characters or situations that make the concept memorable
+4. Connects the story context to the technical problem
+5. Maintains educational value while being engaging
 
-Make it suitable for ${difficulty} level and ensure the story helps learners understand WHY this problem matters, not just HOW to solve it.
+Make it suitable for ${difficulty} level and ensure the story helps learners understand WHY this problem exists, not just HOW to solve it.
 
-Format the response as a cohesive story with clear sections. Keep it engaging but concise (2-3 paragraphs max).
+Format the response as a cohesive narrative. Keep it concise (2-3 paragraphs max) and focus purely on the storytelling without emojis, special symbols, or decorative elements.
 `;
   }
 
