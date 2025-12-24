@@ -15,7 +15,7 @@ import { problemsData, allProblemsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Heart, Home } from 'lucide-react';
+import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import { getLocalLivesData, loseLife, hasLives, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
@@ -574,18 +574,9 @@ class Program {
                 <p className="text-2xl font-bold text-primary">{formatTimeRemaining(timeRemaining)}</p>
               </div>
             )}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={() => navigate('/learning-tracks')} variant="outline">
-                Learning Tracks
-              </Button>
-              <Button onClick={() => navigate('/problems')} variant="default">
-                DSA Problems
-              </Button>
-              <Button onClick={() => navigate('/')} variant="secondary">
-                <Home className="mr-2 h-4 w-4" />
-                Home
-              </Button>
-            </div>
+            <Button onClick={() => navigate('/learning-tracks')} variant="outline">
+              Return to Learning Tracks
+            </Button>
           </div>
         </div>
       </div>
@@ -634,7 +625,7 @@ class Program {
               {/* Problem Header */}
               <div className="border-b border-border p-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                  <div>
                     <h1 className="text-xl font-bold">{problem.title}</h1>
                     <div className="mt-2 flex items-center gap-2">
                       <Badge variant="outline" className={cn('border', config.className)}>
@@ -645,30 +636,6 @@ class Program {
                         <Badge className="bg-success text-success-foreground">Solved ✓</Badge>
                       )}
                     </div>
-                  </div>
-                  {/* Back to Home Button */}
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        // Navigate back based on problem type
-                        if (isDSAProblem) {
-                          navigate('/problems');
-                        } else if (problem.category.toLowerCase().includes('track')) {
-                          // Extract language from category and navigate to track
-                          const language = problem.category.toLowerCase().replace(' track', '');
-                          navigate(`/${language}-track`);
-                        } else {
-                          navigate('/learning-tracks');
-                        }
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <Home className="h-4 w-4" />
-                      <span className="hidden sm:inline">Back to Home</span>
-                      <span className="sm:hidden">Home</span>
-                    </Button>
                   </div>
                 </div>
               </div>
