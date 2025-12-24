@@ -2,7 +2,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const API_KEY = 'AIzaSyALrlxecmAarC-gYt3FNeFVA8XvTkHMGk0';
-const MODEL_NAME = 'gemini-pro';
+const MODEL_NAME = 'gemini-3-flash-preview';
 
 // Initialize the Google Generative AI
 const genAI = new GoogleGenerativeAI(API_KEY);
