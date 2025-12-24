@@ -22,6 +22,7 @@ import { getLocalLivesData, loseLife, hasLives, formatTimeRemaining, getTimeUnti
 import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { GlitchyAssistant } from '@/components/editor/GlitchyAssistant';
 import { LanguageSelector } from '@/components/editor/LanguageSelector';
+import { StoryGenerator } from '@/components/problems/StoryGenerator';
 
 interface TestCase {
   id: string;
@@ -309,7 +310,7 @@ class Program {
         
         if (newLivesData.lives === 0) {
           setNoLives(true);
-          toast.error('You lost all your lives! Come back in 24 hours.', {
+          toast.error('You lost all your lives! Come back in 10 minutes.', {
             duration: 5000,
           });
         } else {
@@ -329,7 +330,7 @@ class Program {
           
           if (newLivesData.lives === 0) {
             setNoLives(true);
-            toast.error('You lost all your lives! Come back in 24 hours.', {
+            toast.error('You lost all your lives! Come back in 10 minutes.', {
               duration: 5000,
             });
           } else {
@@ -565,7 +566,7 @@ class Program {
             </div>
             <h2 className="text-2xl font-bold text-destructive mb-4">No Lives Remaining</h2>
             <p className="text-muted-foreground mb-6">
-              You've lost all your lives by leaving problem pages. Lives restore 24 hours after being lost.
+              You've lost all your lives by leaving problem pages. Lives restore 10 minutes after being lost.
             </p>
             {timeRemaining && (
               <div className="bg-muted rounded-lg p-4 mb-6">
@@ -649,6 +650,22 @@ class Program {
                       <p className="whitespace-pre-wrap">{problem.description}</p>
                     </div>
                   </div>
+
+                  {/* AI Story Generator */}
+                  <StoryGenerator 
+                    problem={{
+                      id: problem.id,
+                      title: problem.title,
+                      description: problem.description,
+                      difficulty: problem.difficulty,
+                      category: problem.category,
+                      language: editorLanguage
+                    }}
+                    onStoryGenerated={(story) => {
+                      // You can store the story or display it in a modal/sidebar
+                      console.log('Story generated:', story);
+                    }}
+                  />
 
                   {/* Input Format */}
                   {problem.inputFormat && (

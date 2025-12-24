@@ -1,4 +1,4 @@
-// Lives System - 3 lives that restore 24 hours after loss
+// Lives System - 3 lives that restore 10 minutes after loss
 import { supabase } from '@/integrations/supabase/client';
 
 const getLivesStorageKey = (userId?: string) => `dsarena_lives_data_${userId || 'anonymous'}`;
@@ -20,7 +20,7 @@ export function getLocalLivesData(userId?: string): LivesData {
     const stored = localStorage.getItem(getLivesStorageKey(userId));
     if (stored) {
       const data = JSON.parse(stored) as LivesData;
-      // Restore lives that have passed 24 hours
+      // Restore lives that have passed 10 minutes
       return restoreExpiredLives(data, userId);
     }
   } catch (e) {
@@ -29,13 +29,13 @@ export function getLocalLivesData(userId?: string): LivesData {
   return { ...DEFAULT_LIVES, userId };
 }
 
-// Restore lives that have been lost for more than 24 hours
+// Restore lives that have been lost for more than 10 minutes
 function restoreExpiredLives(data: LivesData, userId?: string): LivesData {
   const now = Date.now();
-  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  const TEN_MINUTES = 10 * 60 * 1000; // 10 minutes in milliseconds
   
-  // Filter out expired losses (older than 24 hours)
-  const activeLosses = data.lostTimes.filter(time => now - time < TWENTY_FOUR_HOURS);
+  // Filter out expired losses (older than 10 minutes)
+  const activeLosses = data.lostTimes.filter(time => now - time < TEN_MINUTES);
   
   // Calculate restored lives
   const restoredCount = data.lostTimes.length - activeLosses.length;
@@ -91,13 +91,13 @@ export function getTimeUntilNextRestore(userId?: string): number | null {
     return null;
   }
   
-  const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  const TEN_MINUTES = 10 * 60 * 1000; // 10 minutes in milliseconds
   const now = Date.now();
   
   // Find the oldest loss that hasn't been restored yet
   const sortedLosses = [...data.lostTimes].sort((a, b) => a - b);
   const oldestLoss = sortedLosses[0];
-  const restoreTime = oldestLoss + TWENTY_FOUR_HOURS;
+  const restoreTime = oldestLoss + TEN_MINUTES;
   
   return Math.max(0, restoreTime - now);
 }

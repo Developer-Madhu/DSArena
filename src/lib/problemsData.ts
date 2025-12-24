@@ -55,9 +55,37 @@ export const problemsData: ProblemData[] = [
     difficulty: "easy",
     description: `Given an integer array nums, return true if any value appears at least twice in the array, and return false if every element is distinct.
 
-**Example:** Given nums = [1, 2, 3, 1], the answer is true because 1 appears twice at indices 0 and 3.
+## Problem Analysis
 
-This problem tests your understanding of hash sets for O(n) lookup. The naive approach would compare each pair of elements (O(n²)), but using a set allows us to check for duplicates in a single pass.`,
+This fundamental problem tests your ability to efficiently detect duplicate elements in an array. While the problem statement is simple, it reveals important concepts about algorithm optimization and data structure selection.
+
+## Example
+**Input:** nums = [1, 2, 3, 1]  
+**Output:** true (because 1 appears at both index 0 and 3)
+
+## Approach Strategy
+
+**Naive Approach:**
+- Compare each element with every other element
+- Time Complexity: O(n²) - too slow for large inputs
+- Space Complexity: O(1)
+
+**Optimal Approach:**
+- Use a Hash Set for O(1) lookup time
+- Iterate through array, checking if element exists in set
+- If found, return true; otherwise, add to set
+- Time Complexity: O(n) - single pass through array
+- Space Complexity: O(n) - storing up to n elements
+
+## Key Insights
+- Hash sets provide constant-time membership testing
+- We only need to find ONE duplicate, not all of them
+- Edge case: single element arrays can never have duplicates
+
+## Common Pitfalls
+- Don't try to sort the array first (O(n log n) vs O(n))
+- Remember to handle negative numbers
+- Consider the constraint that nums.length can be up to 10^5`,
     inputFormat: "def containsDuplicate(nums: List[int]) -> bool:",
     outputFormat: "Return True if any value appears at least twice, False otherwise.",
     constraints: "1 <= nums.length <= 10^5\n-10^9 <= nums[i] <= 10^9",
@@ -134,9 +162,47 @@ print(isAnagram(s, t))`,
 
 You may assume that each input would have exactly one solution, and you may not use the same element twice.
 
-**Example:** Given nums = [2, 7, 11, 15], target = 9, return [0, 1] because nums[0] + nums[1] = 2 + 7 = 9.
+## Problem Analysis
 
-Use a hash map to store each number's index as you iterate. For each number, check if (target - current) exists in the map.`,
+This is one of the most fundamental problems in computer science and a classic interview question. It teaches the powerful concept of trading time for space using hash maps. The problem appears simple but demonstrates important algorithmic thinking patterns.
+
+## Example
+**Input:** nums = [2, 7, 11, 15], target = 9  
+**Output:** [0, 1] (because nums[0] + nums[1] = 2 + 7 = 9)
+
+## Approach Strategy
+
+**Brute Force Approach:**
+- Check all pairs of numbers
+- Time Complexity: O(n²) - nested loops
+- Space Complexity: O(1)
+
+**Optimal Hash Map Approach:**
+- Single pass through array
+- For each number, check if (target - current) exists in hash map
+- Store number and its index as we iterate
+- Time Complexity: O(n) - single pass
+- Space Complexity: O(n) - hash map storage
+
+## Key Insight: "Looking Backward"
+The critical insight is that we can find the complement (target - current number) in the numbers we've already seen. This eliminates the need to look forward.
+
+## Implementation Steps
+1. Create an empty hash map to store {number: index} pairs
+2. Iterate through the array with index and value
+3. Calculate complement = target - current value
+4. If complement exists in hash map, return [complement_index, current_index]
+5. Otherwise, add current value and index to hash map
+
+## Edge Cases
+- Negative numbers: handled naturally by hash map
+- Zero values: complement calculation works correctly
+- Large arrays: hash map provides O(1) lookups
+
+## Common Mistakes
+- Not checking hash map before adding current element
+- Returning values instead of indices
+- Forgetting that exactly one solution exists`,
     inputFormat: "def twoSum(nums: List[int], target: int) -> List[int]:",
     outputFormat: "Return a list of two indices that add up to target.",
     constraints: "2 <= nums.length <= 10^4\n-10^9 <= nums[i] <= 10^9\n-10^9 <= target <= 10^9",
@@ -654,9 +720,55 @@ for _ in range(n):
 
 You must write an algorithm with O(log n) runtime complexity.
 
-**Example:** Given nums = [-1,0,3,5,9,12], target = 9, return 4 because nums[4] = 9.
+Problem Analysis
+Binary search is one of the most fundamental algorithms in computer science. It is a textbook example of the divide and conquer paradigm and demonstrates how to efficiently search in sorted data. This problem is essential for understanding logarithmic time complexity.
 
-Classic binary search: compare middle element with target, narrow search range accordingly.`,
+Example
+Input: nums = [-1,0,3,5,9,12], target = 9  
+Output: 4 (because nums[4] = 9)
+
+Algorithm Design
+The Binary Search Logic:
+1. Start with the entire search space: left = 0, right = len(nums) - 1
+2. While left <= right:
+   - Calculate middle index: mid = left + (right - left) // 2
+   - Compare nums[mid] with target
+   - If equal: return mid
+   - If nums[mid] < target: search right half (left = mid + 1)
+   - If nums[mid] > target: search left half (right = mid - 1)
+3. If loop ends without finding target: return -1
+
+Time & Space Complexity
+- Time Complexity: O(log n) - each iteration halves the search space
+- Space Complexity: O(1) - only using constant extra space
+
+Key Concepts
+Why Binary Search Works:
+- Sorted array property: nums[i] < nums[i+1]
+- Each comparison eliminates half the remaining elements
+- Guarantees logarithmic reduction in search space
+
+Mid Calculation:
+- Use left + (right - left) // 2 instead of (left + right) // 2
+- Prevents integer overflow in languages with limited integer size
+
+Common Variations
+- Find first occurrence of target (with duplicates)
+- Find insertion position for target
+- Find peak element in mountain array
+- Find minimum in rotated sorted array
+
+Implementation Tips
+- Always use inclusive ranges: [left, right]
+- Check left <= right condition in loop
+- Update boundaries correctly: left = mid + 1, right = mid - 1
+
+Edge Cases
+- Empty array: should return -1
+- Single element array
+- Target not present in array
+- Target at first position
+- Target at last position`,
     inputFormat: "def search(nums: List[int], target: int) -> int:",
     outputFormat: "Return the index of target if found, -1 otherwise.",
     constraints: "1 <= nums.length <= 10^4\n-10^4 < nums[i], target < 10^4\nAll elements in nums are unique\nnums is sorted in ascending order",
