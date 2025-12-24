@@ -1,7 +1,7 @@
 // AI Story Generation Service using Google Generative AI
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const API_KEY = 'AIzaSyBih-RAymp8z1jNif-DPhx1QZqFCXQSiAo';
+const API_KEY = 'AIzaSyA3xHDu673YOesw92JjcSbYsWnju9pzNMQ';
 const MODEL_NAME = 'gemini-3-pro-preview';
 
 // Initialize the Google Generative AI
