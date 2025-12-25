@@ -619,6 +619,23 @@ int main() {
                         </div>
                       </div>
                     )}
+
+                    Story Generator for Dynamic Story Creation
+                    <StoryGenerator
+                      problem={{
+                        id: challenge.id,
+                        title: challenge.title,
+                        description: challenge.description,
+                        difficulty: challenge.difficulty,
+                        category: challenge.category,
+                        language: selectedLanguage
+                      }}
+                      onStoryGenerated={(story) => {
+                        // Update challenge with generated story
+                        setChallenge(prev => prev ? { ...prev, story } : null);
+                      }}
+                      className="mt-4"
+                    />
                   </div>
 
                   <Separator />
