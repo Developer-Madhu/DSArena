@@ -606,21 +606,6 @@ int main() {
                   {/* Problem Description Section */}
                   <div>
                     <h3 className="mb-2 font-semibold">Problem Description</h3>
-                    
-                    {/* AI Story */}
-                    {challenge.story && (
-                      <div>
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <BookOpen className="h-4 w-4" />
-                          Story Context
-                        </h4>
-                        <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
-                          {challenge.story}
-                        </div>
-                      </div>
-                    )}
-
-                    Story Generator for Dynamic Story Creation
                     <StoryGenerator
                       problem={{
                         id: challenge.id,
