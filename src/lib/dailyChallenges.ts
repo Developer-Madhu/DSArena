@@ -52,8 +52,7 @@ class DailyChallengeService {
       return await this.generateDailyChallenge(today);
     } catch (error) {
       console.error('Error fetching today challenge:', error);
-      // Fallback: generate a challenge
-      return await this.generateDailyChallenge(today);
+      throw new Error('Failed to fetch today\'s challenge. Please check your database connection.');
     }
   }
 
@@ -62,6 +61,10 @@ class DailyChallengeService {
     try {
       // Select a random problem from the problems database
       const availableProblems = problemsData;
+      if (!availableProblems || availableProblems.length === 0) {
+        throw new Error('No problems available for daily challenge generation');
+      }
+
       const randomProblem = availableProblems[Math.floor(Math.random() * availableProblems.length)];
 
       // Create challenge data
@@ -71,11 +74,11 @@ class DailyChallengeService {
         description: randomProblem.description,
         category: randomProblem.category,
         difficulty: randomProblem.difficulty,
-        inputFormat: randomProblem.inputFormat,
-        outputFormat: randomProblem.outputFormat,
+        input_format: randomProblem.inputFormat,
+        output_format: randomProblem.outputFormat,
         constraints: randomProblem.constraints,
-        timeLimitMs: randomProblem.timeLimitMs,
-        memoryLimitMb: randomProblem.memoryLimitMb,
+        time_limit_ms: randomProblem.timeLimitMs,
+        memory_limit_mb: randomProblem.memoryLimitMb,
         test_cases: [
           ...randomProblem.visibleTestCases.map(tc => ({
             input: tc.input,
@@ -99,13 +102,20 @@ class DailyChallengeService {
 
       if (error) {
         console.error('Error creating daily challenge:', error);
-        throw error;
+        throw new Error(`Failed to create daily challenge: ${error.message}`);
+      }
+
+      if (!newChallenge) {
+        throw new Error('No challenge data returned from database');
       }
 
       return this.transformChallenge(newChallenge);
     } catch (error) {
       console.error('Error generating daily challenge:', error);
-      throw error;
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to generate daily challenge');
     }
   }
 
@@ -235,34 +245,62 @@ class DailyChallengeService {
   // Get user's challenge history
   async getUserChallengeHistory(userId: string, limit: number = 30): Promise<DailyChallengeProgress[]> {
     try {
-      const { data, error } = await supabase
+      // Get progress data without join to avoid relationship issues
+      const { data: progressData, error: progressError } = await supabase
         .from('daily_challenge_progress')
-        .select(`
-          *,
-          daily_challenges (
-            title,
-            difficulty,
-            category
-          )
-        `)
+        .select('*')
         .eq('user_id', userId)
         .order('challenge_date', { ascending: false })
         .limit(limit);
 
-      if (error) {
-        console.error('Error fetching challenge history:', error);
+      if (progressError) {
+        console.error('Error fetching challenge progress:', progressError);
         return [];
       }
 
-      return data?.map(item => ({
-        userId: item.user_id,
-        challengeDate: item.challenge_date,
-        isCompleted: item.is_completed,
-        solvedAt: item.solved_at,
-        runtimeMs: item.runtime_ms,
-        language: item.language,
-        challenge: item.daily_challenges
-      })) || [];
+      if (!progressData || progressData.length === 0) {
+        return [];
+      }
+
+      // Get challenge details separately
+      const dates = progressData.map(p => p.challenge_date);
+      const { data: challengeData, error: challengeError } = await supabase
+        .from('daily_challenges')
+        .select('date, title, difficulty, category')
+        .in('date', dates);
+
+      if (challengeError) {
+        console.error('Error fetching challenge details:', challengeError);
+        // Return progress data without challenge details
+        return progressData.map(item => ({
+          userId: item.user_id,
+          challengeDate: item.challenge_date,
+          isCompleted: item.is_completed,
+          solvedAt: item.solved_at,
+          runtimeMs: item.runtime_ms,
+          language: item.language
+        }));
+      }
+
+      // Combine progress and challenge data
+      const challengeMap = new Map(challengeData?.map(c => [c.date, c]) || []);
+      
+      return progressData.map(item => {
+        const challenge = challengeMap.get(item.challenge_date);
+        return {
+          userId: item.user_id,
+          challengeDate: item.challenge_date,
+          isCompleted: item.is_completed,
+          solvedAt: item.solved_at,
+          runtimeMs: item.runtime_ms,
+          language: item.language,
+          challenge: challenge ? {
+            title: challenge.title,
+            difficulty: challenge.difficulty,
+            category: challenge.category
+          } : undefined
+        };
+      });
     } catch (error) {
       console.error('Error fetching challenge history:', error);
       return [];
@@ -330,19 +368,15 @@ class DailyChallengeService {
     };
   }> {
     try {
-      const { data: progress, error } = await supabase
+      // Get progress data without join
+      const { data: progressData, error: progressError } = await supabase
         .from('daily_challenge_progress')
-        .select(`
-          *,
-          daily_challenges (
-            difficulty
-          )
-        `)
+        .select('*')
         .eq('user_id', userId)
         .eq('is_completed', true);
 
-      if (error) {
-        console.error('Error fetching challenge stats:', error);
+      if (progressError) {
+        console.error('Error fetching challenge stats:', progressError);
         return {
           totalCompleted: 0,
           currentStreak: 0,
@@ -352,24 +386,46 @@ class DailyChallengeService {
         };
       }
 
-      const totalCompleted = progress?.length || 0;
+      const totalCompleted = progressData?.length || 0;
       const currentStreak = await this.getUserDailyStreak(userId);
       
-      // Calculate difficulty breakdown
+      // Calculate difficulty breakdown if we have progress data
       const difficultyBreakdown = { easy: 0, medium: 0, hard: 0 };
       let totalRuntime = 0;
       let runtimeCount = 0;
 
-      progress?.forEach(item => {
-        if (item.daily_challenges?.difficulty) {
-          difficultyBreakdown[item.daily_challenges.difficulty as keyof typeof difficultyBreakdown]++;
+      if (progressData && progressData.length > 0) {
+        // Get challenge details for difficulty breakdown
+        const dates = progressData.map(p => p.challenge_date);
+        const { data: challengeData, error: challengeError } = await supabase
+          .from('daily_challenges')
+          .select('date, difficulty')
+          .in('date', dates);
+
+        if (!challengeError && challengeData) {
+          const challengeMap = new Map(challengeData.map(c => [c.date, c.difficulty]));
+          
+          progressData.forEach(item => {
+            const difficulty = challengeMap.get(item.challenge_date);
+            if (difficulty && difficultyBreakdown.hasOwnProperty(difficulty)) {
+              difficultyBreakdown[difficulty as keyof typeof difficultyBreakdown]++;
+            }
+            
+            if (item.runtime_ms) {
+              totalRuntime += item.runtime_ms;
+              runtimeCount++;
+            }
+          });
+        } else {
+          // If challenge data fetch fails, just calculate runtime stats
+          progressData.forEach(item => {
+            if (item.runtime_ms) {
+              totalRuntime += item.runtime_ms;
+              runtimeCount++;
+            }
+          });
         }
-        
-        if (item.runtime_ms) {
-          totalRuntime += item.runtime_ms;
-          runtimeCount++;
-        }
-      });
+      }
 
       return {
         totalCompleted,
