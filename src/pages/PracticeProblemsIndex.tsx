@@ -21,7 +21,11 @@ export default function PracticeProblemsIndex() {
   const navigate = useNavigate();
 
   const getCategoryIcon = (category: string) => {
-    if (category.toLowerCase().includes('pattern')) {
+    if (category.toLowerCase().includes('pattern') || 
+        category.includes('Ascending') || 
+        category.includes('Descending') ||
+        category.includes('Stars') ||
+        category.includes('Pattern')) {
       return <Star className="h-4 w-4" />;
     } else if (category.toLowerCase().includes('prime')) {
       return <Zap className="h-4 w-4" />;
@@ -34,7 +38,11 @@ export default function PracticeProblemsIndex() {
   };
 
   const getCategoryColor = (category: string) => {
-    if (category.toLowerCase().includes('pattern')) {
+    if (category.toLowerCase().includes('pattern') || 
+        category.includes('Ascending') || 
+        category.includes('Descending') ||
+        category.includes('Stars') ||
+        category.includes('Pattern')) {
       return 'bg-blue-500/20 text-blue-700 border-blue-500/30';
     } else if (category.toLowerCase().includes('prime')) {
       return 'bg-purple-500/20 text-purple-700 border-purple-500/30';
@@ -102,7 +110,13 @@ export default function PracticeProblemsIndex() {
               Pattern Printing
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {practiceProblemsData.filter(p => p.slug.includes('pattern')).map((problem) => (
+              {practiceProblemsData.filter(p => 
+                p.title.includes('Pattern') || 
+                p.slug.includes('ascending-numbers') ||
+                p.slug.includes('descending-numbers') ||
+                p.slug.includes('left-stars') ||
+                p.slug.includes('right-stars')
+              ).map((problem) => (
                 <Card 
                   key={problem.id} 
                   className="cursor-pointer transition-all hover:shadow-lg hover:scale-105 border-2 hover:border-primary/50"

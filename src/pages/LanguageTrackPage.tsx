@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Sparkles,
   GraduationCap,
-  ArrowLeft
+  ArrowLeft,
+  Home
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -137,16 +138,25 @@ export default function LanguageTrackPage() {
       <Navbar />
 
       <main className="container mx-auto px-4 py-4 sm:py-8">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/learning-tracks')}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          All Tracks
-        </Button>
+        {/* Navigation Buttons */}
+        <div className="flex items-center gap-2 mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/learning-tracks')}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            All Tracks
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/')}
+          >
+            <Home className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Home</span>
+          </Button>
+        </div>
 
         {/* Header */}
         <div className="mb-6 sm:mb-8 text-center">

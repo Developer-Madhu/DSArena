@@ -15,7 +15,7 @@ import { problemsData, allProblemsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Heart } from 'lucide-react';
+import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Heart, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import { getLocalLivesData, loseLife, hasLives, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
@@ -637,6 +637,15 @@ class Program {
                       )}
                     </div>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/')}
+                    className="flex items-center gap-2"
+                  >
+                    <Home className="h-4 w-4" />
+                    <span className="hidden sm:inline">Home</span>
+                  </Button>
                 </div>
               </div>
 

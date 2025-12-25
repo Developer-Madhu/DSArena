@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProblemCard } from '@/components/problems/ProblemCard';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -13,9 +15,10 @@ import {
 import { problemsData, topicsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
 import { fetchSolvedProblems } from '@/lib/progressStorage';
-import { Search } from 'lucide-react';
+import { Search, Home } from 'lucide-react';
 
 export default function Problems() {
+  const navigate = useNavigate();
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
@@ -59,11 +62,22 @@ export default function Problems() {
 
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Problems</h1>
-          <p className="mt-2 text-muted-foreground">
-            {problemCounts.total} problems across {categories.length} topics
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Problems</h1>
+            <p className="mt-2 text-muted-foreground">
+              {problemCounts.total} problems across {categories.length} topics
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2"
+          >
+            <Home className="h-4 w-4" />
+            <span className="hidden sm:inline">Home</span>
+          </Button>
         </div>
 
         {/* Stats */}
