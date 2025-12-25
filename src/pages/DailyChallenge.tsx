@@ -640,13 +640,6 @@ int main() {
 
                   <Separator />
 
-                  {/* Technical Description */}
-                  <div>
-                    <h3 className="mb-2 font-semibold">Technical Description</h3>
-                    <div className="prose prose-invert max-w-none text-sm text-foreground">
-                      <div dangerouslySetInnerHTML={{ __html: challenge.description.replace(/\n/g, '<br>') }} />
-                    </div>
-                  </div>
 
                   <Separator />
 
