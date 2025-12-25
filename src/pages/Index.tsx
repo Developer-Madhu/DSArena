@@ -11,9 +11,20 @@ import {
   Terminal,
   BarChart3,
   Users,
+  Calendar,
+  Flame,
+  Star,
+  Target,
+  Crown,
 } from 'lucide-react';
 
 const features = [
+  {
+    icon: Calendar,
+    title: 'Daily Challenge System',
+    description:
+      'New! Fresh DSA problems every day with streak tracking, achievement badges, and progress monitoring.',
+  },
   {
     icon: Code2,
     title: 'Python-Only Editor',
@@ -107,10 +118,80 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Daily Challenge Section */}
+      <section className="border-y border-border bg-gradient-to-br from-primary/5 to-accent/5">
+        <div className="container mx-auto px-4 py-16">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mb-4 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm text-primary">
+              <Calendar className="mr-2 h-4 w-4" />
+              New Feature
+            </div>
+            <h2 className="mb-4 text-3xl font-bold sm:text-4xl">
+              <span className="gradient-text">Daily Challenge</span> System
+            </h2>
+            <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground">
+              Build consistent coding habits with our new daily challenge system. Get a fresh DSA problem every day, 
+              track your streak, and compete with yourself to improve!
+            </p>
+            
+            {/* Challenge Features Grid */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+              <div className="text-center p-6 rounded-xl bg-card border border-border">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+                  <Flame className="h-5 w-5 text-warning" />
+                </div>
+                <h3 className="font-semibold mb-1">Build Streaks</h3>
+                <p className="text-sm text-muted-foreground">Daily challenges to maintain coding consistency</p>
+              </div>
+              
+              <div className="text-center p-6 rounded-xl bg-card border border-border">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-1">Fresh Problems</h3>
+                <p className="text-sm text-muted-foreground">New challenges selected from our problem database</p>
+              </div>
+              
+              <div className="text-center p-6 rounded-xl bg-card border border-border">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+                  <Crown className="h-5 w-5 text-success" />
+                </div>
+                <h3 className="font-semibold mb-1">Track Progress</h3>
+                <p className="text-sm text-muted-foreground">Monitor completion rates and performance metrics</p>
+              </div>
+              
+              <div className="text-center p-6 rounded-xl bg-card border border-border">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+                  <Star className="h-5 w-5 text-accent" />
+                </div>
+                <h3 className="font-semibold mb-1">Earn Achievements</h3>
+                <p className="text-sm text-muted-foreground">Unlock badges for streaks and milestones</p>
+              </div>
+            </div>
+            
+            {/* CTA Buttons */}
+            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <Link to="/auth?mode=signup">
+                <Button variant="hero" size="lg" className="w-full sm:w-auto">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  Start Daily Challenge
+                </Button>
+              </Link>
+              <Link to="/daily-challenge">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                  Preview Today's Challenge
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Section */}
       <section className="border-y border-border bg-card/50">
         <div className="container mx-auto px-4 py-12">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
             <div className="text-center">
               <div className="text-3xl font-bold text-primary sm:text-4xl">150+</div>
               <div className="mt-1 text-sm text-muted-foreground">Problems</div>
@@ -118,6 +199,10 @@ export default function Index() {
             <div className="text-center">
               <div className="text-3xl font-bold text-primary sm:text-4xl">17</div>
               <div className="mt-1 text-sm text-muted-foreground">Topics</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary sm:text-4xl">∞</div>
+              <div className="mt-1 text-sm text-muted-foreground">Daily Challenges</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-primary sm:text-4xl">8</div>

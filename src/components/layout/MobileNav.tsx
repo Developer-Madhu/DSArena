@@ -18,6 +18,7 @@ import {
   Code,
   BookOpen,
   Home,
+  Calendar,
 } from 'lucide-react';
 
 export function MobileNav() {
@@ -85,6 +86,14 @@ export function MobileNav() {
           >
             <Code2 className="mr-3 h-5 w-5" />
             All Tracks
+          </Button>
+          <Button
+            variant="ghost"
+            className="justify-start"
+            onClick={() => handleNavigate('/daily-challenge')}
+          >
+            <Calendar className="mr-3 h-5 w-5" />
+            Daily Challenge
           </Button>
 
           {user ? (

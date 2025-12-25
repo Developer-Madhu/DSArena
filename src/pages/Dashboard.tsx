@@ -25,10 +25,14 @@ import {
   Crown,
   Gem,
   Medal,
+  Clock,
+  CalendarDays,
+  PlayCircle,
 } from 'lucide-react';
 import { problemsData } from '@/lib/problemsData';
 import { getAvailableTracks, LanguageTrack } from '@/lib/languageTracksData';
 import { cn } from '@/lib/utils';
+import { dailyChallengeService, DailyChallenge } from '@/lib/dailyChallenges';
 
 interface Profile {
   username: string | null;
@@ -63,6 +67,19 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  
+  // Daily Challenge state
+  const [todayChallenge, setTodayChallenge] = useState<DailyChallenge | null>(null);
+  const [todaySolved, setTodaySolved] = useState(false);
+  const [userStreak, setUserStreak] = useState(0);
+  const [challengeStats, setChallengeStats] = useState({
+    totalCompleted: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    averageRuntime: 0,
+    difficultyBreakdown: { easy: 0, medium: 0, hard: 0 }
+  });
+  const [challengeHistory, setChallengeHistory] = useState<any[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -93,6 +110,26 @@ export default function Dashboard() {
     // Fetch solved problems using the new progress storage
     const solved = await fetchSolvedProblems(user.id);
     setSolvedIds(solved);
+
+    // Fetch Daily Challenge data
+    try {
+      const [challenge, hasSolvedToday, streak, stats, history] = await Promise.all([
+        dailyChallengeService.getTodayChallenge(),
+        dailyChallengeService.hasUserSolvedToday(user.id),
+        dailyChallengeService.getUserDailyStreak(user.id),
+        dailyChallengeService.getUserChallengeStats(user.id),
+        dailyChallengeService.getUserChallengeHistory(user.id, 7) // Last 7 challenges
+      ]);
+
+      setTodayChallenge(challenge);
+      setTodaySolved(hasSolvedToday);
+      setUserStreak(streak);
+      setChallengeStats(stats);
+      setChallengeHistory(history);
+    } catch (error) {
+      console.error('Failed to load daily challenge data:', error);
+      // Continue without daily challenge data if there's an error
+    }
 
     setLoading(false);
   };
@@ -203,13 +240,27 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
               <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-                Current Streak
+                Daily Challenge Streak
               </CardTitle>
               <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-warning" />
             </CardHeader>
             <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="text-2xl sm:text-3xl font-bold">{profile.streak_days}</div>
-              <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground">days</p>
+              <div className="text-2xl sm:text-3xl font-bold">{userStreak || profile.streak_days}</div>
+              <p className="mt-1 text-[10px] sm:text-xs text-muted-foreground">
+                {userStreak > 0 ? 'consecutive days' : 'start your streak!'}
+              </p>
+              {userStreak > 0 && (
+                <div className="mt-2 flex items-center gap-1">
+                  <div className="flex -space-x-1">
+                    {Array.from({ length: Math.min(userStreak, 5) }, (_, i) => (
+                      <Flame key={i} className="h-3 w-3 text-warning fill-current" />
+                    ))}
+                  </div>
+                  {userStreak > 5 && (
+                    <span className="text-[10px] text-muted-foreground">+{userStreak - 5} more</span>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -240,6 +291,116 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* Daily Challenge Section */}
+        <Card className="mb-6 sm:mb-8 bg-gradient-to-br from-primary/5 to-accent/5">
+          <CardHeader className="px-4 sm:px-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                <CardTitle className="text-lg sm:text-xl">Daily Challenge</CardTitle>
+                <Badge className={cn(
+                  "ml-2",
+                  todaySolved 
+                    ? "bg-success text-success-foreground" 
+                    : "bg-secondary text-secondary-foreground"
+                )}>
+                  {todaySolved ? "Completed ✓" : "Available"}
+                </Badge>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Flame className="h-4 w-4 text-warning" />
+                  <span className="font-medium">Streak: {userStreak} days</span>
+                </div>
+                <Link to="/daily-challenge">
+                  <Button size="sm" className={todaySolved ? "variant-outline" : "hero"}>
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                    {todaySolved ? "View Challenge" : "Start Challenge"}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardHeader>
+          {todayChallenge && (
+            <CardContent className="px-4 sm:px-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Challenge Info */}
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">{todayChallenge.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                      {todayChallenge.description.substring(0, 120)}...
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" className={cn(
+                        todayChallenge.difficulty === 'easy' && "bg-green-500/20 text-green-700 border-green-500/30",
+                        todayChallenge.difficulty === 'medium' && "bg-yellow-500/20 text-yellow-700 border-yellow-500/30",
+                        todayChallenge.difficulty === 'hard' && "bg-red-500/20 text-red-700 border-red-500/30"
+                      )}>
+                        {todayChallenge.difficulty.charAt(0).toUpperCase() + todayChallenge.difficulty.slice(1)}
+                      </Badge>
+                      <Badge variant="secondary">{todayChallenge.category}</Badge>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>{todayChallenge.timeLimitMs}ms</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 rounded-lg bg-card border">
+                      <div className="text-2xl font-bold text-primary">{challengeStats.totalCompleted}</div>
+                      <div className="text-xs text-muted-foreground">Completed</div>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-card border">
+                      <div className="text-2xl font-bold text-warning">{challengeStats.averageRuntime || 0}ms</div>
+                      <div className="text-xs text-muted-foreground">Avg Runtime</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Challenge History */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    Recent Challenges
+                  </h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {challengeHistory.length > 0 ? (
+                      challengeHistory.map((entry, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 rounded border bg-card">
+                          <div className="flex items-center gap-2">
+                            <div className={cn(
+                              "w-2 h-2 rounded-full",
+                              entry.isCompleted ? "bg-success" : "bg-muted"
+                            )} />
+                            <span className="text-sm">{new Date(entry.challengeDate).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {entry.isCompleted ? (
+                              <CheckCircle2 className="h-3 w-3 text-success" />
+                            ) : (
+                              <div className="w-3 h-3 border border-muted-foreground/30 rounded-full" />
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {entry.solvedAt ? new Date(entry.solvedAt).toLocaleTimeString() : 'Not solved'}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No challenge history yet. Start your first daily challenge!
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
         {/* Achievement Badges & Streak Milestones */}
         <Card className="mb-6 sm:mb-8">
           <CardHeader className="flex flex-row items-center justify-between px-4 sm:px-6">
@@ -260,12 +421,12 @@ export default function Dashboard() {
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                 {[
-                  { days: 1, icon: <Zap className="h-4 w-4" />, name: "First Step", earned: profile.streak_days >= 1 },
-                  { days: 3, icon: <Star className="h-4 w-4" />, name: "Getting Started", earned: profile.streak_days >= 3 },
-                  { days: 7, icon: <Calendar className="h-4 w-4" />, name: "Week Warrior", earned: profile.streak_days >= 7 },
-                  { days: 14, icon: <TrendingUp className="h-4 w-4" />, name: "Consistent Coder", earned: profile.streak_days >= 14 },
-                  { days: 30, icon: <Crown className="h-4 w-4" />, name: "Coding Champion", earned: profile.streak_days >= 30 },
-                  { days: 100, icon: <Gem className="h-4 w-4" />, name: "Master of Code", earned: profile.streak_days >= 100 },
+                  { days: 1, icon: <Zap className="h-4 w-4" />, name: "First Step", earned: (userStreak || profile.streak_days) >= 1 },
+                  { days: 3, icon: <Star className="h-4 w-4" />, name: "Getting Started", earned: (userStreak || profile.streak_days) >= 3 },
+                  { days: 7, icon: <Calendar className="h-4 w-4" />, name: "Week Warrior", earned: (userStreak || profile.streak_days) >= 7 },
+                  { days: 14, icon: <TrendingUp className="h-4 w-4" />, name: "Consistent Coder", earned: (userStreak || profile.streak_days) >= 14 },
+                  { days: 30, icon: <Crown className="h-4 w-4" />, name: "Coding Champion", earned: (userStreak || profile.streak_days) >= 30 },
+                  { days: 100, icon: <Gem className="h-4 w-4" />, name: "Master of Code", earned: (userStreak || profile.streak_days) >= 100 },
                 ].map((badge, index) => (
                   <div
                     key={index}
@@ -329,6 +490,55 @@ export default function Dashboard() {
                     <div className="text-[10px] text-muted-foreground">{badge.name}</div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Daily Challenge Difficulty Mastery */}
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                Daily Challenge Mastery
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { difficulty: 'easy', solved: challengeStats.difficultyBreakdown.easy, color: 'success', bgClass: 'bg-success', borderClass: 'border-success' },
+                  { difficulty: 'medium', solved: challengeStats.difficultyBreakdown.medium, color: 'warning', bgClass: 'bg-warning', borderClass: 'border-warning' },
+                  { difficulty: 'hard', solved: challengeStats.difficultyBreakdown.hard, color: 'destructive', bgClass: 'bg-destructive', borderClass: 'border-destructive' },
+                ].map((difficulty, index) => {
+                  return (
+                    <div
+                      key={index}
+                      className={cn(
+                        'rounded-lg border p-4 transition-all',
+                        difficulty.solved > 0
+                          ? `${difficulty.borderClass}/30 bg-${difficulty.color}/10`
+                          : 'border-border bg-muted/30'
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            'w-3 h-3 rounded-full',
+                            difficulty.bgClass
+                          )}></div>
+                          <span className="text-sm font-medium capitalize">{difficulty.difficulty}</span>
+                        </div>
+                        {difficulty.solved > 0 && (
+                          <Crown className="h-4 w-4 text-warning" />
+                        )}
+                      </div>
+                      <div className="text-lg font-bold mb-1">
+                        {difficulty.solved} challenges
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {difficulty.solved === 0 ? "Not started yet" : 
+                         difficulty.solved < 5 ? "Getting started" :
+                         difficulty.solved < 15 ? "Making progress" :
+                         "Daily Challenge Pro!"}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -521,6 +731,14 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+              {!todaySolved && (
+                <Link to="/daily-challenge" className="w-full sm:w-auto">
+                  <Button variant="default" size="default" className="w-full sm:w-auto bg-primary hover:bg-primary/90">
+                    <CalendarDays className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                    Daily Challenge
+                  </Button>
+                </Link>
+              )}
               <Link to="/problems" className="w-full sm:w-auto">
                 <Button variant="outline" size="default" className="w-full sm:w-auto">
                   <BookOpen className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />

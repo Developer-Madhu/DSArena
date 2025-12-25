@@ -348,6 +348,96 @@ export type Database = {
           },
         ]
       }
+      daily_challenges: {
+        Row: {
+          id: string
+          date: string
+          title: string
+          description: string
+          category: string
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          input_format: string | null
+          output_format: string | null
+          constraints: string | null
+          time_limit_ms: number | null
+          memory_limit_mb: number | null
+          test_cases: Json | null
+          story: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          date: string
+          title: string
+          description: string
+          category: string
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          input_format?: string | null
+          output_format?: string | null
+          constraints?: string | null
+          time_limit_ms?: number | null
+          memory_limit_mb?: number | null
+          test_cases?: Json | null
+          story?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          date?: string
+          title?: string
+          description?: string
+          category?: string
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          input_format?: string | null
+          output_format?: string | null
+          constraints?: string | null
+          time_limit_ms?: number | null
+          memory_limit_mb?: number | null
+          test_cases?: Json | null
+          story?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      daily_challenge_progress: {
+        Row: {
+          id: string
+          user_id: string
+          challenge_date: string
+          is_completed: boolean | null
+          solved_at: string | null
+          runtime_ms: number | null
+          language: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          challenge_date: string
+          is_completed?: boolean | null
+          solved_at?: string | null
+          runtime_ms?: number | null
+          language?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          challenge_date?: string
+          is_completed?: boolean | null
+          solved_at?: string | null
+          runtime_ms?: number | null
+          language?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
