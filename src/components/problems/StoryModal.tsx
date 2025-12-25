@@ -111,7 +111,7 @@ export function StoryModal({
               <Sparkles className="h-6 w-6 text-primary" />
               <div>
                 <DialogTitle className="text-xl">
-                  AI Story for: {problemTitle}
+                  Problem Description: {problemTitle}
                 </DialogTitle>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className={getDifficultyColor(problemDifficulty)}>

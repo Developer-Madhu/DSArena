@@ -74,11 +74,8 @@ export function StoryGenerator({ problem, onStoryGenerated, className }: StoryGe
           <div>
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-foreground mb-2">
-                Story-Based Explanation
+                Problem Description
               </h3>
-              <p className="text-sm text-muted-foreground">
-                A narrative approach to understanding this problem
-              </p>
             </div>
             
             <ScrollArea className="h-64 w-full rounded-md border border-border">

@@ -603,9 +603,9 @@ int main() {
               {/* Problem Content */}
               <ScrollArea className="flex-1">
                 <div className="space-y-6 p-4">
-                  {/* Story Description Section */}
+                  {/* Problem Description Section */}
                   <div>
-                    <h3 className="mb-2 font-semibold">Story Description</h3>
+                    <h3 className="mb-2 font-semibold">Problem Description</h3>
                     
                     {/* AI Story */}
                     {challenge.story && (

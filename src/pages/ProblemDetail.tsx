@@ -643,7 +643,7 @@ class Program {
               {/* Problem Content */}
               <ScrollArea className="flex-1">
                 <div className="space-y-6 p-4">
-                  {/* AI Story-Based Explanation */}
+                  {/* Problem Description */}
                   <StoryGenerator 
                     problem={{
                       id: problem.id,

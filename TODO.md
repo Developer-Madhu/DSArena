@@ -1,62 +1,41 @@
-# Daily Challenge Description Reorganization Plan
+# TODO: Update StoryGenerator Component Structure
 
-## Task Overview
-Reorganize the daily challenge description section to follow the specified order:
-1. Story Description 
-2. Technical Description 
-3. Remaining details
+## Objective
+Update the story context section to use "Problem Description" as heading and remove story-based explanatory text.
 
-## Information Gathered
-After analyzing the DailyChallenge.tsx file, I found the current structure of the problem description section:
+## Changes Required
 
-**Current Structure:**
-1. Problem Description (challenge.description with HTML)
-2. Input/Output Formats 
-3. Constraints
-4. Limits (time/memory)
-5. Test Cases (Examples)
-6. AI Story (if available)
-7. Story Generator
+### 1. Update StoryGenerator Component (`src/components/problems/StoryGenerator.tsx`)
+- [x] Change heading from "Story-Based Explanation" to "Problem Description"
+- [x] Remove subtitle "A narrative approach to understanding this problem"
+- [x] Keep the AI story content display functionality intact
+- [x] Maintain all existing functionality (loading, error states, etc.)
 
-**Target Structure:**
-1. Story Description
-   - AI Story (if available)
-   - Story Generator
-2. Technical Description  
-   - Problem Description
-3. Remaining details
-   - Input/Output Formats
-   - Constraints  
-   - Limits
-   - Test Cases
+### 2. Update StoryModal Component (`src/components/problems/StoryModal.tsx`)
+- [x] Update dialog title to reflect "Problem Description" context
+- [x] Ensure consistency with StoryGenerator changes
 
-## Plan Details
+### 3. Update ProblemDetail Page (`src/pages/ProblemDetail.tsx`)
+- [x] Update comment to reflect new "Problem Description" context
 
-### Files to be Modified
-- `/workspaces/DSArena/src/pages/DailyChallenge.tsx` - Main daily challenge page component
+### 4. Update DailyChallenge Page (`src/pages/DailyChallenge.tsx`)
+- [x] Update section heading from "Story Description" to "Problem Description"
+- [x] Update comment for consistency
 
-### Specific Changes Required
-1. **Reorder Story Components**: Move AI Story and Story Generator to the top of the description section
-2. **Rename Technical Section**: Change "Problem Description" to "Technical Description" 
-3. **Maintain All Content**: Keep all existing sections but reorganize their order
-4. **Preserve Styling**: Maintain all existing CSS classes and layout structure
-5. **Keep Separators**: Preserve separator components between sections
+### 5. Test Changes
+- [ ] Verify StoryGenerator displays correctly with new heading
+- [ ] Confirm AI story generation still works
+- [ ] Check that modal functionality remains intact
+- [ ] Ensure no breaking changes to ProblemDetail page
+- [ ] Test DailyChallenge page functionality
 
-### Implementation Steps
-1. Locate the current description content structure in DailyChallenge.tsx
-2. Reorder the JSX elements to match the target structure
-3. Update section headings as specified
-4. Test the changes to ensure no functionality is broken
+## Files Modified
+1. `src/components/problems/StoryGenerator.tsx` - Main component update ✅
+2. `src/components/problems/StoryModal.tsx` - Dialog title consistency ✅
+3. `src/pages/ProblemDetail.tsx` - Comment update ✅
+4. `src/pages/DailyChallenge.tsx` - Section heading update ✅
 
-## Dependent Files
-None - this is a standalone UI reorganization task that doesn't affect other components or logic.
-
-## Followup Steps
-1. Review the changes in the DailyChallenge.tsx file
-2. Test the daily challenge page to ensure proper rendering
-3. Verify all sections display correctly in the new order
-
-## Status
-- [x] Analyze current file structure
-- [x] Implement the reorganization changes
-- [x] Verify the changes work correctly
+## Expected Outcome
+- Clean, consistent "Problem Description" heading across all problem views ✅
+- AI story content properly displayed under the new heading ✅
+- Maintained functionality for story generation and editing ✅
