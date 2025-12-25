@@ -76,13 +76,13 @@ export function TestCasePanel({
           </div>
         </div>
 
-        <TabsContent value="testcases" className="flex-1 p-0 mt-0 min-h-0">
+        <TabsContent value="testcases" className="flex-1 p-0 mt-0">
           <ScrollArea className="h-full">
-            <div className="space-y-3 p-3">
+            <div className="space-y-4 p-4">
               {visibleCases.map((testCase, index) => (
                 <div
                   key={testCase.id}
-                  className="rounded-lg border border-border bg-muted/30 p-3"
+                  className="rounded-lg border border-border bg-muted/30 p-4"
                 >
                   <div className="mb-2 text-sm font-medium text-muted-foreground">
                     Case {index + 1}
@@ -92,7 +92,7 @@ export function TestCasePanel({
                       <div className="mb-1 text-xs font-medium text-muted-foreground">
                         Input
                       </div>
-                      <pre className="rounded bg-background p-2 font-mono text-sm text-foreground overflow-x-auto">
+                      <pre className="rounded bg-background p-2 font-mono text-sm text-foreground">
                         {testCase.input}
                       </pre>
                     </div>
@@ -100,7 +100,7 @@ export function TestCasePanel({
                       <div className="mb-1 text-xs font-medium text-muted-foreground">
                         Expected Output
                       </div>
-                      <pre className="rounded bg-background p-2 font-mono text-sm text-foreground overflow-x-auto">
+                      <pre className="rounded bg-background p-2 font-mono text-sm text-foreground">
                         {testCase.expected_output}
                       </pre>
                     </div>
@@ -111,9 +111,9 @@ export function TestCasePanel({
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="results" className="flex-1 p-0 mt-0 min-h-0">
+        <TabsContent value="results" className="flex-1 p-0 mt-0">
           <ScrollArea className="h-full">
-            <div className="space-y-3 p-3">
+            <div className="space-y-4 p-4">
               {isRunning ? (
                 <div className="flex items-center justify-center py-8">
                   <Clock className="mr-2 h-5 w-5 animate-spin text-primary" />
@@ -124,7 +124,7 @@ export function TestCasePanel({
                   <div
                     key={index}
                     className={cn(
-                      'rounded-lg border p-3',
+                      'rounded-lg border p-4',
                       result.passed
                         ? 'border-success/30 bg-success/5'
                         : 'border-destructive/30 bg-destructive/5'
@@ -150,7 +150,7 @@ export function TestCasePanel({
                         <div className="mb-1 text-xs font-medium text-muted-foreground">
                           Your Output
                         </div>
-                        <pre className="rounded bg-background p-2 font-mono text-sm text-foreground overflow-x-auto">
+                        <pre className="rounded bg-background p-2 font-mono text-sm text-foreground">
                           {result.actual_output}
                         </pre>
                       </div>
@@ -160,7 +160,7 @@ export function TestCasePanel({
                         <div className="mb-1 text-xs font-medium text-destructive">
                           Error
                         </div>
-                        <pre className="rounded bg-destructive/10 p-2 font-mono text-sm text-destructive overflow-x-auto">
+                        <pre className="rounded bg-destructive/10 p-2 font-mono text-sm text-destructive">
                           {result.error}
                         </pre>
                       </div>
@@ -179,11 +179,11 @@ export function TestCasePanel({
           </ScrollArea>
         </TabsContent>
 
-        <TabsContent value="console" className="flex-1 p-0 mt-0 min-h-0">
+        <TabsContent value="console" className="flex-1 p-0 mt-0">
           <ScrollArea className="h-full">
-            <div className="p-3">
+            <div className="p-4">
               {consoleOutput ? (
-                <pre className="whitespace-pre-wrap font-mono text-sm text-foreground overflow-x-auto">
+                <pre className="whitespace-pre-wrap font-mono text-sm text-foreground">
                   {consoleOutput}
                 </pre>
               ) : (
