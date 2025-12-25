@@ -603,9 +603,46 @@ int main() {
               {/* Problem Content */}
               <ScrollArea className="flex-1">
                 <div className="space-y-6 p-4">
-                  {/* Problem Description */}
+                  {/* Story Description Section */}
                   <div>
-                    <h3 className="mb-2 font-semibold">Problem Description</h3>
+                    <h3 className="mb-2 font-semibold">Story Description</h3>
+                    
+                    {/* AI Story */}
+                    {challenge.story && (
+                      <div>
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <BookOpen className="h-4 w-4" />
+                          Story Context
+                        </h4>
+                        <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
+                          {challenge.story}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Story Generator for Dynamic Story Creation */}
+                    <StoryGenerator
+                      problem={{
+                        id: challenge.id,
+                        title: challenge.title,
+                        description: challenge.description,
+                        difficulty: challenge.difficulty,
+                        category: challenge.category,
+                        language: selectedLanguage
+                      }}
+                      onStoryGenerated={(story) => {
+                        // Update challenge with generated story
+                        setChallenge(prev => prev ? { ...prev, story } : null);
+                      }}
+                      className="mt-4"
+                    />
+                  </div>
+
+                  <Separator />
+
+                  {/* Technical Description */}
+                  <div>
+                    <h3 className="mb-2 font-semibold">Technical Description</h3>
                     <div className="prose prose-invert max-w-none text-sm text-foreground">
                       <div dangerouslySetInnerHTML={{ __html: challenge.description.replace(/\n/g, '<br>') }} />
                     </div>
@@ -679,40 +716,6 @@ int main() {
                       ))}
                     </div>
                   </div>
-
-                  {/* AI Story */}
-                  {challenge.story && (
-                    <>
-                      <Separator />
-                      <div>
-                        <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <BookOpen className="h-4 w-4" />
-                          Story Context
-                        </h4>
-                        <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
-                          {challenge.story}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Story Generator for Dynamic Story Creation */}
-                  <Separator />
-                  <StoryGenerator
-                    problem={{
-                      id: challenge.id,
-                      title: challenge.title,
-                      description: challenge.description,
-                      difficulty: challenge.difficulty,
-                      category: challenge.category,
-                      language: selectedLanguage
-                    }}
-                    onStoryGenerated={(story) => {
-                      // Update challenge with generated story
-                      setChallenge(prev => prev ? { ...prev, story } : null);
-                    }}
-                    className="mt-4"
-                  />
                 </div>
               </ScrollArea>
             </div>
