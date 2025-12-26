@@ -278,12 +278,19 @@ class Program {
   useEffect(() => {
     const checkIfSolved = async () => {
       if (!user || !problem) return;
+
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(problem.id);
+      const filter = isUuid
+        ? `problem_id.eq.${problem.id}`
+        : `problem_slug.eq.${problem.id}`;
+
       const { data } = await supabase
         .from('user_solved')
         .select('id')
         .eq('user_id', user.id)
-        .eq('problem_id', problem.id)
+        .or(filter)
         .maybeSingle();
+
       if (data) {
         setAlreadySolved(true);
         setSolved(true);

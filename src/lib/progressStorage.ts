@@ -1,22 +1,64 @@
-// Progress persistence layer - Supabase-first with loading states
+// Progress persistence layer - backend-first with local fallback hydration guard
 import { supabase } from '@/integrations/supabase/client';
 
 // In-memory cache for solved problems to avoid flickering
 let solvedProblemsCache: { [userId: string]: { problems: Set<string>; lastFetched: number } } = {};
 const CACHE_TTL = 30000; // 30 seconds cache
 
+// Local backup (per-user) to prevent UI regressions if backend fetch returns empty temporarily.
+const LOCAL_SOLVED_KEY_PREFIX = 'dsarena_solved_v1:';
+
 // UUID validation regex
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Check if a string is a valid UUID
 function isValidUUID(id: string): boolean {
   return UUID_REGEX.test(id);
 }
 
-// Fetch solved problems from Supabase (primary source of truth)
+function localSolvedKey(userId: string) {
+  return `${LOCAL_SOLVED_KEY_PREFIX}${userId}`;
+}
+
+function readLocalSolved(userId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(localSolvedKey(userId));
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr)) return new Set();
+    return new Set(arr.filter((x): x is string => typeof x === 'string' && x.length > 0));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeLocalSolved(userId: string, solved: Set<string>) {
+  try {
+    localStorage.setItem(localSolvedKey(userId), JSON.stringify(Array.from(solved)));
+  } catch {
+    // ignore
+  }
+}
+
+async function seedSolvedToBackend(userId: string, solved: Set<string>) {
+  // Best-effort: insert rows; ignore duplicates.
+  for (const id of solved) {
+    const payload = isValidUUID(id)
+      ? { user_id: userId, problem_id: id, attempts: 1 }
+      : { user_id: userId, problem_slug: id, attempts: 1 };
+
+    const { error } = await supabase.from('user_solved').insert([payload] as any);
+    // 23505 = unique_violation (already exists)
+    if (error && error.code !== '23505') {
+      // Don’t spam console for every row; one error is enough signal.
+      console.error('Failed to seed solved problem to backend:', { id, error });
+      return;
+    }
+  }
+}
+
+// Fetch solved problems from backend (primary source of truth), with hydration guard.
 export async function fetchSolvedProblems(userId: string): Promise<Set<string>> {
   try {
-    // Check cache first
     const cached = solvedProblemsCache[userId];
     if (cached && Date.now() - cached.lastFetched < CACHE_TTL) {
       return cached.problems;
@@ -24,25 +66,41 @@ export async function fetchSolvedProblems(userId: string): Promise<Set<string>> 
 
     const { data, error } = await supabase
       .from('user_solved')
-      .select('problem_id')
+      .select('problem_id, problem_slug')
       .eq('user_id', userId);
 
     if (error) {
       console.error('Error fetching solved problems:', error);
-      // Return cached data if available, otherwise empty set
-      return cached?.problems || new Set();
+      // Prefer cached, then local fallback.
+      return cached?.problems || readLocalSolved(userId);
     }
 
-    const solvedIds = new Set(data.map(d => d.problem_id));
+    const solvedIds = new Set<string>();
+    for (const row of data || []) {
+      const id = (row as any).problem_slug ?? (row as any).problem_id;
+      if (typeof id === 'string' && id.length > 0) solvedIds.add(id);
+    }
 
-    // Update cache
+    // Hydration guard: if backend returns empty but we have local progress, keep local and backfill.
+    if (solvedIds.size === 0) {
+      const local = readLocalSolved(userId);
+      if (local.size > 0) {
+        solvedProblemsCache[userId] = { problems: local, lastFetched: Date.now() };
+        // Backfill asynchronously (don’t block UI)
+        setTimeout(() => {
+          seedSolvedToBackend(userId, local);
+        }, 0);
+        return local;
+      }
+    }
+
     solvedProblemsCache[userId] = { problems: solvedIds, lastFetched: Date.now() };
-
+    writeLocalSolved(userId, solvedIds);
     return solvedIds;
   } catch (error) {
     console.error('Error fetching solved problems:', error);
     const cached = solvedProblemsCache[userId];
-    return cached?.problems || new Set();
+    return cached?.problems || readLocalSolved(userId);
   }
 }
 
@@ -53,7 +111,7 @@ export function isProblemSolvedCached(problemId: string, userId?: string): boole
   return cached?.problems.has(problemId) || false;
 }
 
-// Save progress to Supabase
+// Save progress to backend
 export async function saveProgress(
   userId: string,
   problemId: string,
@@ -61,29 +119,26 @@ export async function saveProgress(
   runtimeMs?: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Skip Supabase save for non-UUID problem IDs (local practice problems)
-    // but still update local cache for UI consistency
-    if (!isValidUUID(problemId)) {
-      console.log('Skipping Supabase save for non-UUID problem:', problemId);
-      // Update cache immediately for local problems
-      if (!solvedProblemsCache[userId]) {
-        solvedProblemsCache[userId] = { problems: new Set(), lastFetched: Date.now() };
-      }
-      solvedProblemsCache[userId].problems.add(problemId);
-      solvedProblemsCache[userId].lastFetched = Date.now();
-      return { success: true };
-    }
+    const isUuid = isValidUUID(problemId);
+    const matchColumn = isUuid ? 'problem_id' : 'problem_slug';
 
     // Check if already solved in DB
     const { data: existing, error: checkError } = await supabase
       .from('user_solved')
       .select('id, attempts, best_runtime_ms')
       .eq('user_id', userId)
-      .eq('problem_id', problemId)
+      .eq(matchColumn, problemId)
       .maybeSingle();
 
     if (checkError) {
       console.error('Error checking existing record:', checkError);
+      // Still update cache/local backup so UI doesn't regress.
+      if (!solvedProblemsCache[userId]) {
+        solvedProblemsCache[userId] = { problems: new Set(), lastFetched: Date.now() };
+      }
+      solvedProblemsCache[userId].problems.add(problemId);
+      solvedProblemsCache[userId].lastFetched = Date.now();
+      writeLocalSolved(userId, solvedProblemsCache[userId].problems);
       return { success: false, error: checkError.message };
     }
 
@@ -93,9 +148,10 @@ export async function saveProgress(
         .from('user_solved')
         .update({
           attempts: (existing.attempts || 0) + 1,
-          best_runtime_ms: runtimeMs && (!existing.best_runtime_ms || runtimeMs < existing.best_runtime_ms)
-            ? runtimeMs
-            : existing.best_runtime_ms,
+          best_runtime_ms:
+            runtimeMs && (!existing.best_runtime_ms || runtimeMs < existing.best_runtime_ms)
+              ? runtimeMs
+              : existing.best_runtime_ms,
           last_attempt_at: new Date().toISOString(),
         })
         .eq('id', existing.id);
@@ -105,15 +161,15 @@ export async function saveProgress(
         return { success: false, error: updateError.message };
       }
     } else {
-      // Create new record
-      const { error: insertError } = await supabase
-        .from('user_solved')
-        .insert({
-          user_id: userId,
-          problem_id: problemId,
-          best_runtime_ms: runtimeMs,
-          attempts: 1,
-        });
+      // Create new record (store in problem_id if UUID, otherwise problem_slug)
+      const insertPayload: Record<string, any> = {
+        user_id: userId,
+        best_runtime_ms: runtimeMs,
+        attempts: 1,
+      };
+      insertPayload[matchColumn] = problemId;
+
+      const { error: insertError } = await supabase.from('user_solved').insert([insertPayload] as any);
 
       if (insertError) {
         console.error('Error inserting user_solved:', insertError);
@@ -141,12 +197,13 @@ export async function saveProgress(
       }
     }
 
-    // Update cache immediately
+    // Update cache + local backup immediately
     if (!solvedProblemsCache[userId]) {
       solvedProblemsCache[userId] = { problems: new Set(), lastFetched: Date.now() };
     }
     solvedProblemsCache[userId].problems.add(problemId);
     solvedProblemsCache[userId].lastFetched = Date.now();
+    writeLocalSolved(userId, solvedProblemsCache[userId].problems);
 
     return { success: true };
   } catch (error) {
@@ -155,7 +212,7 @@ export async function saveProgress(
   }
 }
 
-// Initialize progress cache from Supabase (call on app load)
+// Initialize progress cache from backend (call on app load)
 export async function initializeProgressCache(userId: string): Promise<Set<string>> {
   return fetchSolvedProblems(userId);
 }
@@ -179,11 +236,11 @@ export function getCachedSolvedProblems(userId?: string): Set<string> {
   return cached?.problems || new Set();
 }
 
-// Force refresh cache from Supabase
+// Force refresh cache from backend
 export async function refreshProgressCache(userId: string): Promise<Set<string>> {
-  // Clear cache to force fresh fetch
   if (solvedProblemsCache[userId]) {
     delete solvedProblemsCache[userId];
   }
   return fetchSolvedProblems(userId);
 }
+
