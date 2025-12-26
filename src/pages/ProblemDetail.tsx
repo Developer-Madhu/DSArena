@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Heart, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
-import { getLocalLivesData, loseLife, hasLives, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
+import { getLocalLivesData, loseLife, hasLives, hasLivesAsync, fetchLivesData, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
 import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { GlitchyAssistant } from '@/components/editor/GlitchyAssistant';
 import { LanguageSelector } from '@/components/editor/LanguageSelector';
@@ -292,9 +292,26 @@ class Program {
     checkIfSolved();
   }, [user, problem]);
 
+  // Initialize lives from Supabase
+  useEffect(() => {
+    const initLives = async () => {
+      if (!user?.id) return;
+      
+      try {
+        await fetchLivesData(user.id);
+        const hasAnyLives = await hasLivesAsync(user.id);
+        setNoLives(!hasAnyLives);
+      } catch (error) {
+        console.error('Error initializing lives:', error);
+      }
+    };
+    
+    initLives();
+  }, [user?.id]);
+
   // Lives system - detect when user leaves the page
   useEffect(() => {
-    // Check if user has lives
+    // Check if user has lives (sync check from cache)
     if (!hasLives(user?.id)) {
       setNoLives(true);
       return;
@@ -353,7 +370,15 @@ class Program {
 
   // Reset life check when problem changes
   useEffect(() => {
-    setNoLives(!hasLives(user?.id));
+    const checkLives = async () => {
+      if (user?.id) {
+        const hasAnyLives = await hasLivesAsync(user.id);
+        setNoLives(!hasAnyLives);
+      } else {
+        setNoLives(!hasLives(user?.id));
+      }
+    };
+    checkLives();
   }, [slug, user?.id]);
 
   // Convert visible test cases to the format expected by TestCasePanel

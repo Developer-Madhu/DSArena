@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-
+import { clearLivesCache, initializeLivesCache } from '@/lib/livesSystem';
+import { clearProgressCache, initializeProgressCache } from '@/lib/progressStorage';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -20,16 +21,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Initialize caches on login
+        if (event === 'SIGNED_IN' && session?.user) {
+          await Promise.all([
+            initializeLivesCache(session.user.id),
+            initializeProgressCache(session.user.id)
+          ]);
+        }
+
+        // Clear caches on logout
+        if (event === 'SIGNED_OUT') {
+          clearLivesCache();
+          clearProgressCache();
+        }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // Initialize caches if user is already logged in
+      if (session?.user) {
+        await Promise.all([
+          initializeLivesCache(session.user.id),
+          initializeProgressCache(session.user.id)
+        ]);
+      }
+      
       setLoading(false);
     });
 
@@ -57,6 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Clear caches before signing out
+    clearLivesCache();
+    clearProgressCache();
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
