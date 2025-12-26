@@ -21,17 +21,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Initialize caches on login
+        // Initialize caches on login using setTimeout to avoid deadlock
         if (event === 'SIGNED_IN' && session?.user) {
-          await Promise.all([
-            initializeLivesCache(session.user.id),
-            initializeProgressCache(session.user.id)
-          ]);
+          setTimeout(() => {
+            Promise.all([
+              initializeLivesCache(session.user.id),
+              initializeProgressCache(session.user.id)
+            ]);
+          }, 0);
         }
 
         // Clear caches on logout
@@ -42,19 +44,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
       
       // Initialize caches if user is already logged in
       if (session?.user) {
-        await Promise.all([
-          initializeLivesCache(session.user.id),
-          initializeProgressCache(session.user.id)
-        ]);
+        setTimeout(() => {
+          Promise.all([
+            initializeLivesCache(session.user.id),
+            initializeProgressCache(session.user.id)
+          ]);
+        }, 0);
       }
-      
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
