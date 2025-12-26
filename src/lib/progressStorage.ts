@@ -1,92 +1,57 @@
-// Progress persistence layer with localStorage backup and Supabase sync
+// Progress persistence layer - Supabase-first with loading states
 import { supabase } from '@/integrations/supabase/client';
 
-const getProgressKey = (userId?: string) => `dsarena_user_progress_${userId || 'anonymous'}`;
+// In-memory cache for solved problems to avoid flickering
+let solvedProblemsCache: { [userId: string]: { problems: Set<string>; lastFetched: number } } = {};
+const CACHE_TTL = 30000; // 30 seconds cache
 
-interface LocalProgress {
-  solvedProblems: string[];
-  lastUpdated: string;
-  userId?: string;
-}
-
-// Get progress from localStorage for a specific user
-export function getLocalProgress(userId?: string): LocalProgress {
+// Fetch solved problems from Supabase (primary source of truth)
+export async function fetchSolvedProblems(userId: string): Promise<Set<string>> {
   try {
-    const stored = localStorage.getItem(getProgressKey(userId));
-    if (stored) {
-      return JSON.parse(stored);
+    // Check cache first
+    const cached = solvedProblemsCache[userId];
+    if (cached && Date.now() - cached.lastFetched < CACHE_TTL) {
+      return cached.problems;
     }
-  } catch (e) {
-    console.error('Error reading local progress:', e);
-  }
-  return { solvedProblems: [], lastUpdated: new Date().toISOString(), userId };
-}
 
-// Save progress to localStorage for a specific user
-export function saveLocalProgress(problemId: string, userId: string): void {
-  try {
-    const current = getLocalProgress(userId);
-    if (!current.solvedProblems.includes(problemId)) {
-      current.solvedProblems.push(problemId);
+    const { data, error } = await supabase
+      .from('user_solved')
+      .select('problem_id')
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error fetching solved problems:', error);
+      // Return cached data if available, otherwise empty set
+      return cached?.problems || new Set();
     }
-    current.lastUpdated = new Date().toISOString();
-    current.userId = userId;
-    localStorage.setItem(getProgressKey(userId), JSON.stringify(current));
-  } catch (e) {
-    console.error('Error saving local progress:', e);
-  }
-}
 
-// Check if problem is solved locally for a specific user
-export function isProblemSolvedLocally(problemId: string, userId?: string): boolean {
-  const progress = getLocalProgress(userId);
-  return progress.solvedProblems.includes(problemId);
-}
+    const solvedIds = new Set(data.map(d => d.problem_id));
 
-// Clear local progress for a user (on logout)
-export function clearLocalProgress(userId?: string): void {
-  localStorage.removeItem(getProgressKey(userId));
-}
+    // Update cache
+    solvedProblemsCache[userId] = { problems: solvedIds, lastFetched: Date.now() };
 
-// Sync local progress to Supabase
-export async function syncProgressToSupabase(userId: string): Promise<void> {
-  const local = getLocalProgress(userId);
-  
-  for (const problemId of local.solvedProblems) {
-    try {
-      // Check if already exists in DB
-      const { data: existing } = await supabase
-        .from('user_solved')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('problem_id', problemId)
-        .maybeSingle();
-      
-      if (!existing) {
-        await supabase
-          .from('user_solved')
-          .insert({
-            user_id: userId,
-            problem_id: problemId,
-            attempts: 1,
-          });
-      }
-    } catch (e) {
-      console.error('Error syncing problem to Supabase:', problemId, e);
-    }
+    return solvedIds;
+  } catch (error) {
+    console.error('Error fetching solved problems:', error);
+    const cached = solvedProblemsCache[userId];
+    return cached?.problems || new Set();
   }
 }
 
-// Save progress to both local and Supabase
+// Check if a problem is solved (sync version using cache)
+export function isProblemSolvedCached(problemId: string, userId?: string): boolean {
+  if (!userId) return false;
+  const cached = solvedProblemsCache[userId];
+  return cached?.problems.has(problemId) || false;
+}
+
+// Save progress to Supabase
 export async function saveProgress(
   userId: string,
   problemId: string,
   difficulty: 'easy' | 'medium' | 'hard',
   runtimeMs?: number
 ): Promise<{ success: boolean; error?: string }> {
-  // Always save locally first (offline-first)
-  saveLocalProgress(problemId, userId);
-
   try {
     // Check if already solved in DB
     const { data: existing, error: checkError } = await supabase
@@ -155,6 +120,13 @@ export async function saveProgress(
       }
     }
 
+    // Update cache immediately
+    if (!solvedProblemsCache[userId]) {
+      solvedProblemsCache[userId] = { problems: new Set(), lastFetched: Date.now() };
+    }
+    solvedProblemsCache[userId].problems.add(problemId);
+    solvedProblemsCache[userId].lastFetched = Date.now();
+
     return { success: true };
   } catch (error) {
     console.error('Failed to save progress:', error);
@@ -162,33 +134,35 @@ export async function saveProgress(
   }
 }
 
-// Fetch solved problems from Supabase with local fallback
-export async function fetchSolvedProblems(userId: string): Promise<Set<string>> {
-  try {
-    const { data, error } = await supabase
-      .from('user_solved')
-      .select('problem_id')
-      .eq('user_id', userId);
+// Initialize progress cache from Supabase (call on app load)
+export async function initializeProgressCache(userId: string): Promise<Set<string>> {
+  return fetchSolvedProblems(userId);
+}
 
-    if (error) {
-      console.error('Error fetching solved problems:', error);
-      // Fall back to local storage
-      const local = getLocalProgress(userId);
-      return new Set(local.solvedProblems);
-    }
+// Clear progress cache (call on logout)
+export function clearProgressCache(): void {
+  solvedProblemsCache = {};
+}
 
-    const solvedIds = new Set(data.map(d => d.problem_id));
+// Get cached solved problems count for a user
+export function getCachedSolvedCount(userId?: string): number {
+  if (!userId) return 0;
+  const cached = solvedProblemsCache[userId];
+  return cached?.problems.size || 0;
+}
 
-    // Merge with local progress for this specific user
-    const local = getLocalProgress(userId);
-    for (const id of local.solvedProblems) {
-      solvedIds.add(id);
-    }
+// Get cached solved problems set
+export function getCachedSolvedProblems(userId?: string): Set<string> {
+  if (!userId) return new Set();
+  const cached = solvedProblemsCache[userId];
+  return cached?.problems || new Set();
+}
 
-    return solvedIds;
-  } catch (error) {
-    console.error('Error fetching solved problems:', error);
-    const local = getLocalProgress(userId);
-    return new Set(local.solvedProblems);
+// Force refresh cache from Supabase
+export async function refreshProgressCache(userId: string): Promise<Set<string>> {
+  // Clear cache to force fresh fetch
+  if (solvedProblemsCache[userId]) {
+    delete solvedProblemsCache[userId];
   }
+  return fetchSolvedProblems(userId);
 }

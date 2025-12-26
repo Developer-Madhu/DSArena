@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
-import { getLocalLivesData, loseLife, hasLives, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
+import { getLocalLivesData, loseLife, hasLives, hasLivesAsync, fetchLivesData, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
 import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { GlitchyAssistant } from '@/components/editor/GlitchyAssistant';
 import { LanguageSelector } from '@/components/editor/LanguageSelector';
@@ -242,64 +242,81 @@ int main() {
     }
   };
 
-  // Lives system integration
-  useEffect(() => {
-    // Check if user has lives
-    if (!hasLives(user?.id)) {
-      setNoLives(true);
-      return;
-    }
+  // Initialize lives from Supabase
+  useEffect(() => {
+    const initLives = async () => {
+      if (!user?.id) return;
+      
+      try {
+        await fetchLivesData(user.id);
+        const hasAnyLives = await hasLivesAsync(user.id);
+        setNoLives(!hasAnyLives);
+      } catch (error) {
+        console.error('Error initializing lives:', error);
+      }
+    };
+    
+    initLives();
+  }, [user?.id]);
 
-    // Only apply lives system if challenge is not already solved
-    if (todaySolved) return;
+  // Lives system integration
+  useEffect(() => {
+    // Check if user has lives (sync check from cache)
+    if (!hasLives(user?.id)) {
+      setNoLives(true);
+      return;
+    }
 
-    const handleVisibilityChange = () => {
-      if (document.hidden && !todaySolved && hasLives(user?.id)) {
-        // User switched tabs or minimized - lose a life
-        const newLivesData = loseLife(user?.id);
-        
-        if (newLivesData.lives === 0) {
-          setNoLives(true);
-          toast.error('You lost all your lives! Come back in 10 minutes.', {
-            duration: 5000,
-          });
-        } else {
-          toast.warning(`You lost a life for leaving! ${newLivesData.lives} lives remaining.`, {
-            duration: 3000,
-          });
-        }
-      }
-    };
+    // Only apply lives system if challenge is not already solved
+    if (todaySolved) return;
 
-    const handleBlur = () => {
-      if (!todaySolved && hasLives(user?.id)) {
-        // Window lost focus - lose a life (only if we still have lives)
-        const currentLives = getLocalLivesData(user?.id);
-        if (currentLives.lives > 0) {
-          const newLivesData = loseLife(user?.id);
-          
-          if (newLivesData.lives === 0) {
-            setNoLives(true);
-            toast.error('You lost all your lives! Come back in 10 minutes.', {
-              duration: 5000,
-            });
-          } else {
-            toast.warning(`Focus lost! You lost a life. ${newLivesData.lives} remaining.`, {
-              duration: 3000,
-            });
-          }
-        }
-      }
-    };
+    const handleVisibilityChange = () => {
+      if (document.hidden && !todaySolved && hasLives(user?.id)) {
+        // User switched tabs or minimized - lose a life
+        const newLivesData = loseLife(user?.id);
+        
+        if (newLivesData.lives === 0) {
+          setNoLives(true);
+          toast.error('You lost all your lives! Come back in 10 minutes.', {
+            duration: 5000,
+          });
+        } else {
+          toast.warning(`You lost a life for leaving! ${newLivesData.lives} lives remaining.`, {
+            duration: 3000,
+          });
+        }
+      }
+    };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('blur', handleBlur);
+    const handleBlur = () => {
+      if (!todaySolved && hasLives(user?.id)) {
+        // Window lost focus - lose a life (only if we still have lives)
+        const currentLives = getLocalLivesData(user?.id);
+        if (currentLives.lives > 0) {
+          const newLivesData = loseLife(user?.id);
+          
+          if (newLivesData.lives === 0) {
+            setNoLives(true);
+            toast.error('You lost all your lives! Come back in 10 minutes.', {
+              duration: 5000,
+            });
+          } else {
+            toast.warning(`Focus lost! You lost a life. ${newLivesData.lives} remaining.`, {
+              duration: 3000,
+            });
+          }
+        }
+      }
+    };
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, [user, todaySolved]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [user, todaySolved]);
 
   const triggerConfetti = () => {
     const duration = 3000;
