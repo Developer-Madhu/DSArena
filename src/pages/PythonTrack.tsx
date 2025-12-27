@@ -162,9 +162,20 @@ export default function PythonTrack() {
                 View Certificate
               </Button>
             ) : (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-xs sm:text-sm">Complete all to earn certificate</span>
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-xs sm:text-sm">Complete all to earn certificate</span>
+                </div>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCertificate(true)}
+                  className="gap-2 border-dashed"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Preview Certificate
+                </Button>
               </div>
             )}
           </div>
