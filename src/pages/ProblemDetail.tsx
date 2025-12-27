@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/Navbar';
 import { CodeEditor } from '@/components/editor/CodeEditor';
@@ -15,7 +15,7 @@ import { problemsData, allProblemsData } from '@/lib/problemsData';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Heart, Home } from 'lucide-react';
+import { Play, Send, Save, Loader2, ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, Heart, Home, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 import { getLocalLivesData, loseLife, hasLives, hasLivesAsync, fetchLivesData, formatTimeRemaining, getTimeUntilNextRestore } from '@/lib/livesSystem';
@@ -23,6 +23,8 @@ import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { GlitchyAssistant } from '@/components/editor/GlitchyAssistant';
 import { LanguageSelector } from '@/components/editor/LanguageSelector';
 import { StoryGenerator } from '@/components/problems/StoryGenerator';
+import { startProblemSession, endProblemSession, handleVisibilityChange, getCurrentSessionDuration, formatDuration } from '@/lib/timeTracking';
+import { checkBonusEligibility, recordFastSolve, resetFastSolveStreak, getBonusCode } from '@/lib/bonusCodeSystem';
 
 interface TestCase {
   id: string;
@@ -56,6 +58,9 @@ export default function ProblemDetail() {
   const [noLives, setNoLives] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+  const [bonusApplied, setBonusApplied] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const sessionStartedRef = useRef(false);
 
   // Find problem from local data (includes Python track)
   const problem = allProblemsData.find(p => p.slug === slug);
@@ -388,6 +393,50 @@ class Program {
     checkLives();
   }, [slug, user?.id]);
 
+  // Time tracking - start session when problem loads
+  useEffect(() => {
+    if (!user?.id || !problem || sessionStartedRef.current || alreadySolved) return;
+    
+    sessionStartedRef.current = true;
+    startProblemSession(user.id, problem.id);
+    
+    // Update timer every second
+    const timerInterval = setInterval(() => {
+      setCurrentTime(getCurrentSessionDuration());
+    }, 1000);
+    
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearInterval(timerInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // End session on unmount
+      if (user?.id && sessionStartedRef.current) {
+        endProblemSession(user.id, solved);
+        sessionStartedRef.current = false;
+      }
+    };
+  }, [user?.id, problem, alreadySolved, solved]);
+
+  // Check for bonus code eligibility
+  useEffect(() => {
+    const checkBonus = async () => {
+      if (!user?.id || alreadySolved || bonusApplied) return;
+      
+      const eligible = await checkBonusEligibility(user.id);
+      if (eligible) {
+        const bonusCode = getBonusCode(editorLanguage);
+        setCode(bonusCode);
+        setBonusApplied(true);
+        await resetFastSolveStreak(user.id);
+        toast.success('🎁 Bonus! You earned extra starter code for solving 3 problems fast!', { duration: 5000 });
+      }
+    };
+    
+    checkBonus();
+  }, [user?.id, alreadySolved, bonusApplied, editorLanguage]);
+
   // Convert visible test cases to the format expected by TestCasePanel
   const testCases: TestCase[] = problem?.visibleTestCases.map((tc, index) => ({
     id: `tc-${index}`,
@@ -406,6 +455,8 @@ class Program {
     setCode(problem.starterCode);
     setLoading(false);
     setSolved(false);
+    sessionStartedRef.current = false;
+    setBonusApplied(false);
   }, [slug, problem, navigate]);
 
   // Load draft from localStorage
@@ -452,12 +503,20 @@ class Program {
       return;
     }
 
+    // End problem session and get duration
+    const solveTime = await endProblemSession(user.id, true, runtimeMs);
+    sessionStartedRef.current = false;
+
+    // Record fast solve for bonus system
+    if (solveTime !== null) {
+      await recordFastSolve(user.id, solveTime);
+    }
+
     const { saveProgress } = await import('@/lib/progressStorage');
     const result = await saveProgress(user.id, problem.id, problem.difficulty, runtimeMs);
     
     if (!result.success) {
       console.error('Failed to save progress:', result.error);
-      // Progress is already saved locally, so user won't lose data
     }
   };
 

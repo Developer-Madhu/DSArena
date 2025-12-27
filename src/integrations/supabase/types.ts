@@ -46,6 +46,77 @@ export type Database = {
           },
         ]
       }
+      leaderboard_achievements: {
+        Row: {
+          earned_at: string | null
+          id: string
+          tag_icon: string
+          tag_name: string
+          tag_type: string
+          user_id: string
+        }
+        Insert: {
+          earned_at?: string | null
+          id?: string
+          tag_icon: string
+          tag_name: string
+          tag_type: string
+          user_id: string
+        }
+        Update: {
+          earned_at?: string | null
+          id?: string
+          tag_icon?: string
+          tag_name?: string
+          tag_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      problem_sessions: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          problem_id: string | null
+          problem_slug: string | null
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          problem_id?: string | null
+          problem_slug?: string | null
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          problem_id?: string | null
+          problem_slug?: string | null
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "problem_sessions_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       problems: {
         Row: {
           acceptance_rate: number | null
@@ -120,7 +191,9 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          avg_time_per_problem_seconds: number | null
           bio: string | null
+          consecutive_fast_solves: number | null
           created_at: string | null
           display_name: string | null
           easy_solved: number | null
@@ -128,17 +201,21 @@ export type Database = {
           id: string
           is_public: boolean | null
           last_activity_date: string | null
+          last_fast_solve_at: string | null
           lives: number
           lost_times: Json
           medium_solved: number | null
           streak_days: number | null
           total_solved: number | null
+          total_time_spent_seconds: number | null
           updated_at: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          avg_time_per_problem_seconds?: number | null
           bio?: string | null
+          consecutive_fast_solves?: number | null
           created_at?: string | null
           display_name?: string | null
           easy_solved?: number | null
@@ -146,17 +223,21 @@ export type Database = {
           id: string
           is_public?: boolean | null
           last_activity_date?: string | null
+          last_fast_solve_at?: string | null
           lives?: number
           lost_times?: Json
           medium_solved?: number | null
           streak_days?: number | null
           total_solved?: number | null
+          total_time_spent_seconds?: number | null
           updated_at?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          avg_time_per_problem_seconds?: number | null
           bio?: string | null
+          consecutive_fast_solves?: number | null
           created_at?: string | null
           display_name?: string | null
           easy_solved?: number | null
@@ -164,11 +245,13 @@ export type Database = {
           id?: string
           is_public?: boolean | null
           last_activity_date?: string | null
+          last_fast_solve_at?: string | null
           lives?: number
           lost_times?: Json
           medium_solved?: number | null
           streak_days?: number | null
           total_solved?: number | null
+          total_time_spent_seconds?: number | null
           updated_at?: string | null
           username?: string | null
         }
@@ -295,6 +378,39 @@ export type Database = {
           id?: string
           name?: string
           slug?: string
+        }
+        Relationships: []
+      }
+      user_activity: {
+        Row: {
+          created_at: string | null
+          id: string
+          problems_solved: number | null
+          problems_viewed: number | null
+          session_end: string | null
+          session_start: string
+          total_duration_seconds: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          problems_solved?: number | null
+          problems_viewed?: number | null
+          session_end?: string | null
+          session_start?: string
+          total_duration_seconds?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          problems_solved?: number | null
+          problems_viewed?: number | null
+          session_end?: string | null
+          session_start?: string
+          total_duration_seconds?: number | null
+          user_id?: string
         }
         Relationships: []
       }

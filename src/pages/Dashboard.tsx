@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { fetchSolvedProblems } from '@/lib/progressStorage';
+import { getTimeStats, formatDuration, TimeStats } from '@/lib/timeTracking';
+import { Leaderboard } from '@/components/leaderboard/Leaderboard';
 import {
   Trophy,
   Target,
@@ -28,6 +30,7 @@ import {
   Clock,
   CalendarDays,
   PlayCircle,
+  Timer,
 } from 'lucide-react';
 import { problemsData } from '@/lib/problemsData';
 import { getAvailableTracks, LanguageTrack } from '@/lib/languageTracksData';
@@ -80,7 +83,7 @@ export default function Dashboard() {
     difficultyBreakdown: { easy: 0, medium: 0, hard: 0 }
   });
   const [challengeHistory, setChallengeHistory] = useState<any[]>([]);
-
+  const [timeStats, setTimeStats] = useState<TimeStats | null>(null);
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -110,6 +113,14 @@ export default function Dashboard() {
     // Fetch solved problems using the new progress storage
     const solved = await fetchSolvedProblems(user.id);
     setSolvedIds(solved);
+
+    // Fetch time stats
+    try {
+      const stats = await getTimeStats(user.id);
+      setTimeStats(stats);
+    } catch (error) {
+      console.error('Failed to load time stats:', error);
+    }
 
     // Fetch Daily Challenge data
     try {
