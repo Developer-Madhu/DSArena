@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      arena_sessions: {
+        Row: {
+          attempts_count: number | null
+          completed_at: string | null
+          created_at: string | null
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          hints_used: boolean | null
+          id: string
+          mode: Database["public"]["Enums"]["arena_mode"]
+          problem_id: string | null
+          problem_slug: string | null
+          rating_after: number | null
+          rating_before: number | null
+          rating_change: number | null
+          result: Database["public"]["Enums"]["arena_result"] | null
+          started_at: string | null
+          time_limit_seconds: number | null
+          time_taken_seconds: number | null
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          attempts_count?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          hints_used?: boolean | null
+          id?: string
+          mode: Database["public"]["Enums"]["arena_mode"]
+          problem_id?: string | null
+          problem_slug?: string | null
+          rating_after?: number | null
+          rating_before?: number | null
+          rating_change?: number | null
+          result?: Database["public"]["Enums"]["arena_result"] | null
+          started_at?: string | null
+          time_limit_seconds?: number | null
+          time_taken_seconds?: number | null
+          topic: string
+          user_id: string
+        }
+        Update: {
+          attempts_count?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          hints_used?: boolean | null
+          id?: string
+          mode?: Database["public"]["Enums"]["arena_mode"]
+          problem_id?: string | null
+          problem_slug?: string | null
+          rating_after?: number | null
+          rating_before?: number | null
+          rating_change?: number | null
+          result?: Database["public"]["Enums"]["arena_result"] | null
+          started_at?: string | null
+          time_limit_seconds?: number | null
+          time_taken_seconds?: number | null
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       drafts: {
         Row: {
           code: string
@@ -199,6 +262,8 @@ export type Database = {
           easy_solved: number | null
           hard_solved: number | null
           id: string
+          interview_readiness: number | null
+          interview_sessions_completed: number | null
           is_public: boolean | null
           last_activity_date: string | null
           last_fast_solve_at: string | null
@@ -206,10 +271,13 @@ export type Database = {
           lost_times: Json
           medium_solved: number | null
           streak_days: number | null
+          strongest_topic: string | null
+          total_arena_sessions: number | null
           total_solved: number | null
           total_time_spent_seconds: number | null
           updated_at: string | null
           username: string | null
+          weakest_topic: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -221,6 +289,8 @@ export type Database = {
           easy_solved?: number | null
           hard_solved?: number | null
           id: string
+          interview_readiness?: number | null
+          interview_sessions_completed?: number | null
           is_public?: boolean | null
           last_activity_date?: string | null
           last_fast_solve_at?: string | null
@@ -228,10 +298,13 @@ export type Database = {
           lost_times?: Json
           medium_solved?: number | null
           streak_days?: number | null
+          strongest_topic?: string | null
+          total_arena_sessions?: number | null
           total_solved?: number | null
           total_time_spent_seconds?: number | null
           updated_at?: string | null
           username?: string | null
+          weakest_topic?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -243,6 +316,8 @@ export type Database = {
           easy_solved?: number | null
           hard_solved?: number | null
           id?: string
+          interview_readiness?: number | null
+          interview_sessions_completed?: number | null
           is_public?: boolean | null
           last_activity_date?: string | null
           last_fast_solve_at?: string | null
@@ -250,10 +325,55 @@ export type Database = {
           lost_times?: Json
           medium_solved?: number | null
           streak_days?: number | null
+          strongest_topic?: string | null
+          total_arena_sessions?: number | null
           total_solved?: number | null
           total_time_spent_seconds?: number | null
           updated_at?: string | null
           username?: string | null
+          weakest_topic?: string | null
+        }
+        Relationships: []
+      }
+      skill_ratings: {
+        Row: {
+          accuracy: number | null
+          avg_time_seconds: number | null
+          created_at: string | null
+          id: string
+          problems_attempted: number
+          problems_solved: number
+          rating: number
+          tier: Database["public"]["Enums"]["skill_tier"]
+          topic: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          avg_time_seconds?: number | null
+          created_at?: string | null
+          id?: string
+          problems_attempted?: number
+          problems_solved?: number
+          rating?: number
+          tier?: Database["public"]["Enums"]["skill_tier"]
+          topic: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          avg_time_seconds?: number | null
+          created_at?: string | null
+          id?: string
+          problems_attempted?: number
+          problems_solved?: number
+          rating?: number
+          tier?: Database["public"]["Enums"]["skill_tier"]
+          topic?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -350,6 +470,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      topic_unlocks: {
+        Row: {
+          accuracy_required: number | null
+          created_at: string | null
+          current_accuracy: number | null
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          id: string
+          problems_completed: number | null
+          problems_required: number | null
+          topic: string
+          unlocked: boolean | null
+          unlocked_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy_required?: number | null
+          created_at?: string | null
+          current_accuracy?: number | null
+          difficulty: Database["public"]["Enums"]["difficulty_level"]
+          id?: string
+          problems_completed?: number | null
+          problems_required?: number | null
+          topic: string
+          unlocked?: boolean | null
+          unlocked_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy_required?: number | null
+          created_at?: string | null
+          current_accuracy?: number | null
+          difficulty?: Database["public"]["Enums"]["difficulty_level"]
+          id?: string
+          problems_completed?: number | null
+          problems_required?: number | null
+          topic?: string
+          unlocked?: boolean | null
+          unlocked_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       topics: {
         Row: {
@@ -481,6 +646,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_skill_tier: {
+        Args: { rating: number }
+        Returns: Database["public"]["Enums"]["skill_tier"]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -491,7 +660,10 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      arena_mode: "practice" | "interview"
+      arena_result: "solved" | "failed" | "timeout" | "abandoned"
       difficulty_level: "easy" | "medium" | "hard"
+      skill_tier: "bronze" | "silver" | "gold" | "platinum" | "diamond"
       submission_status:
         | "pending"
         | "running"
@@ -629,7 +801,10 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      arena_mode: ["practice", "interview"],
+      arena_result: ["solved", "failed", "timeout", "abandoned"],
       difficulty_level: ["easy", "medium", "hard"],
+      skill_tier: ["bronze", "silver", "gold", "platinum", "diamond"],
       submission_status: [
         "pending",
         "running",
