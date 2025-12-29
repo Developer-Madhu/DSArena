@@ -3,6 +3,7 @@ import { pythonProblemsData } from './pythonProblemsData';
 import { javascriptProblemsData } from './javascriptProblemsData';
 import { javaProblemsData } from './javaProblemsData';
 import { cppProblemsData } from './cppProblemsData';
+import { dsaProblemsData } from './dsaProblemsData';
 
 export interface ProblemData {
   id: string;
@@ -46,7 +47,9 @@ const getDifficulty = (id: string): 'easy' | 'medium' | 'hard' => {
   return 'medium';
 };
 
+// Base problems plus all DSA problems from the new file
 export const problemsData: ProblemData[] = [
+  ...dsaProblemsData,
   // Arrays and Hashing
   {
     id: "arrays-contains-duplicate",
