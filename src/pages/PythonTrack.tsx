@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CompletionCertificate } from '@/components/certificate/CompletionCertificate';
-import { pythonProblemsData, PYTHON_TRACK_TOTAL } from '@/lib/pythonProblemsData';
+import { pythonProblemsData, PYTHON_TRACK_TOTAL, getPythonCategories } from '@/lib/pythonProblemsData';
 import { useAuth } from '@/lib/auth';
 import { fetchSolvedProblems } from '@/lib/progressStorage';
 import { LivesDisplay } from '@/components/lives/LivesDisplay';
@@ -14,6 +14,7 @@ import {
   Trophy, 
   Code, 
   ChevronRight,
+  ChevronDown,
   Sparkles,
   GraduationCap
 } from 'lucide-react';
@@ -24,10 +25,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+
+// Category icons and colors mapping
+const categoryConfig: Record<string, { icon: string; color: string }> = {
+  'Python Core': { icon: '🐍', color: 'from-green-500 to-emerald-600' },
+  'Arrays/Lists': { icon: '📊', color: 'from-blue-500 to-cyan-600' },
+  'Strings': { icon: '🔤', color: 'from-purple-500 to-violet-600' },
+  'Searching & Sorting': { icon: '🔍', color: 'from-orange-500 to-amber-600' },
+  'Stack & Queue': { icon: '📦', color: 'from-pink-500 to-rose-600' },
+  'Linked List': { icon: '🔗', color: 'from-indigo-500 to-blue-600' },
+  'Trees': { icon: '🌳', color: 'from-green-600 to-teal-600' },
+  'Recursion & Backtracking': { icon: '🔁', color: 'from-red-500 to-orange-600' },
+  'Hashing': { icon: '🗂️', color: 'from-yellow-500 to-amber-600' },
+  'Must-Have Interview': { icon: '🎯', color: 'from-red-600 to-pink-600' },
+};
 
 export default function PythonTrack() {
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
   const [showCertificate, setShowCertificate] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const { user } = useAuth();
 
   useEffect(() => {
@@ -40,26 +61,54 @@ export default function PythonTrack() {
   const progressPercent = (solvedCount / PYTHON_TRACK_TOTAL) * 100;
   const isTrackComplete = solvedCount === PYTHON_TRACK_TOTAL;
 
-  const beginnerProblems = pythonProblemsData.filter(p => p.difficulty === 'easy');
-  const intermediateProblems = pythonProblemsData.filter(p => p.difficulty === 'medium');
-  const advancedProblems = pythonProblemsData.filter(p => p.difficulty === 'hard');
+  // Get unique categories in order
+  const categories = getPythonCategories();
 
-  const renderProblemList = (problems: typeof pythonProblemsData, title: string, icon: string) => {
-    const sectionSolvedCount = problems.filter(p => solvedIds.has(p.id)).length;
-    
+  // Group problems by category
+  const problemsByCategory = categories.map(category => ({
+    category,
+    problems: pythonProblemsData.filter(p => p.category === category),
+    config: categoryConfig[category] || { icon: '📝', color: 'from-gray-500 to-slate-600' }
+  }));
+
+  const toggleSection = (category: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  const expandAll = () => {
+    setExpandedSections(new Set(categories));
+  };
+
+  const collapseAll = () => {
+    setExpandedSections(new Set());
+  };
+
+  const renderProblemsByDifficulty = (problems: typeof pythonProblemsData, difficulty: 'easy' | 'medium' | 'hard', label: string, emoji: string) => {
+    const filteredProblems = problems.filter(p => p.difficulty === difficulty);
+    if (filteredProblems.length === 0) return null;
+
+    const sectionSolvedCount = filteredProblems.filter(p => solvedIds.has(p.id)).length;
+
     return (
-      <div className="mb-6 sm:mb-8">
-        <div className="flex items-center gap-2 mb-3 sm:mb-4">
-          <span className="text-xl sm:text-2xl">{icon}</span>
-          <h2 className="text-lg sm:text-xl font-bold">{title}</h2>
-          <Badge variant="secondary" className="ml-2 text-xs">
-            {sectionSolvedCount}/{problems.length}
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-2 px-2">
+          <span className="text-lg">{emoji}</span>
+          <h4 className="text-sm font-semibold text-muted-foreground">{label}</h4>
+          <Badge variant="outline" className="text-[10px] ml-auto">
+            {sectionSolvedCount}/{filteredProblems.length}
           </Badge>
         </div>
-        <div className="grid gap-2 sm:gap-3">
-          {problems.map((problem) => {
+        <div className="grid gap-2">
+          {filteredProblems.map((problem) => {
             const isSolved = solvedIds.has(problem.id);
-            const problemNumber = pythonProblemsData.findIndex(p => p.id === problem.id) + 1;
             
             return (
               <Link
@@ -71,37 +120,26 @@ export default function PythonTrack() {
                   }
                 }}
                 className={cn(
-                  "group flex items-center gap-3 sm:gap-4 rounded-lg sm:rounded-xl border p-3 sm:p-4 transition-all duration-200",
+                  "group flex items-center gap-3 rounded-lg border p-3 transition-all duration-200",
                   isSolved 
                     ? "border-success/30 bg-success/5 cursor-default" 
-                    : "border-border bg-card hover:border-primary/50 hover:bg-card/80 hover:shadow-lg"
+                    : "border-border bg-card/50 hover:border-primary/50 hover:bg-card hover:shadow-md"
                 )}
               >
-                <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted text-xs sm:text-sm font-mono font-bold flex-shrink-0">
-                  {problemNumber}
-                </div>
-                
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className={cn(
-                      "font-semibold text-sm sm:text-base truncate transition-colors",
-                      isSolved ? "text-success" : "text-foreground group-hover:text-primary"
-                    )}>
-                      {problem.title}
-                    </h3>
-                    {isSolved && (
-                      <Badge className="bg-success/20 text-success border-success/30 text-[10px] sm:text-xs hidden sm:inline-flex">
-                        Completed ✓
-                      </Badge>
-                    )}
-                  </div>
+                  <h3 className={cn(
+                    "font-medium text-sm truncate transition-colors",
+                    isSolved ? "text-success" : "text-foreground group-hover:text-primary"
+                  )}>
+                    {problem.title}
+                  </h3>
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {isSolved ? (
-                    <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-success" />
+                    <CheckCircle2 className="h-5 w-5 text-success" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                   )}
                 </div>
               </Link>
@@ -111,6 +149,100 @@ export default function PythonTrack() {
       </div>
     );
   };
+
+  const renderCategorySection = (categoryData: typeof problemsByCategory[0], index: number) => {
+    const { category, problems, config } = categoryData;
+    const isExpanded = expandedSections.has(category);
+    const categorySolvedCount = problems.filter(p => solvedIds.has(p.id)).length;
+    const categoryProgress = (categorySolvedCount / problems.length) * 100;
+
+    const easyCount = problems.filter(p => p.difficulty === 'easy').length;
+    const mediumCount = problems.filter(p => p.difficulty === 'medium').length;
+    const hardCount = problems.filter(p => p.difficulty === 'hard').length;
+
+    return (
+      <Collapsible
+        key={category}
+        open={isExpanded}
+        onOpenChange={() => toggleSection(category)}
+        className="mb-4"
+      >
+        <CollapsibleTrigger asChild>
+          <div className={cn(
+            "w-full rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-lg",
+            isExpanded ? "border-primary/50 bg-card" : "border-border bg-card/80 hover:border-primary/30"
+          )}>
+            <div className="p-4 sm:p-5">
+              <div className="flex items-center gap-3 sm:gap-4">
+                {/* Section number and icon */}
+                <div className={cn(
+                  "flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br text-2xl sm:text-3xl flex-shrink-0",
+                  config.color
+                )}>
+                  {config.icon}
+                </div>
+
+                {/* Title and stats */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-muted-foreground font-mono">Section {index + 1}</span>
+                  </div>
+                  <h3 className="font-bold text-base sm:text-lg truncate">{category}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Progress value={categoryProgress} className="h-1.5 flex-1 max-w-[120px]" />
+                    <span className="text-xs text-muted-foreground">
+                      {categorySolvedCount}/{problems.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Difficulty breakdown */}
+                <div className="hidden sm:flex items-center gap-2">
+                  {easyCount > 0 && (
+                    <Badge variant="outline" className="text-[10px] border-success/50 text-success">
+                      🟢 {easyCount}
+                    </Badge>
+                  )}
+                  {mediumCount > 0 && (
+                    <Badge variant="outline" className="text-[10px] border-warning/50 text-warning">
+                      🟡 {mediumCount}
+                    </Badge>
+                  )}
+                  {hardCount > 0 && (
+                    <Badge variant="outline" className="text-[10px] border-destructive/50 text-destructive">
+                      🔴 {hardCount}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Expand icon */}
+                <ChevronDown className={cn(
+                  "h-5 w-5 text-muted-foreground transition-transform duration-200 flex-shrink-0",
+                  isExpanded && "rotate-180"
+                )} />
+              </div>
+            </div>
+          </div>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="pt-3 px-1">
+          <div className="rounded-xl border border-border bg-card/50 p-4">
+            {renderProblemsByDifficulty(problems, 'easy', 'Beginner', '🟢')}
+            {renderProblemsByDifficulty(problems, 'medium', 'Intermediate', '🟡')}
+            {renderProblemsByDifficulty(problems, 'hard', 'Advanced', '🔴')}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
+  // Overall stats
+  const totalEasy = pythonProblemsData.filter(p => p.difficulty === 'easy').length;
+  const totalMedium = pythonProblemsData.filter(p => p.difficulty === 'medium').length;
+  const totalHard = pythonProblemsData.filter(p => p.difficulty === 'hard').length;
+  const solvedEasy = pythonProblemsData.filter(p => p.difficulty === 'easy' && solvedIds.has(p.id)).length;
+  const solvedMedium = pythonProblemsData.filter(p => p.difficulty === 'medium' && solvedIds.has(p.id)).length;
+  const solvedHard = pythonProblemsData.filter(p => p.difficulty === 'hard' && solvedIds.has(p.id)).length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -126,7 +258,7 @@ export default function PythonTrack() {
             </h1>
           </div>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
-            Master Python programming from basics to advanced concepts through {PYTHON_TRACK_TOTAL} carefully curated coding challenges.
+            Master Python programming through {PYTHON_TRACK_TOTAL} carefully curated challenges across {categories.length} categories.
           </p>
           
           {/* Lives Display */}
@@ -170,29 +302,40 @@ export default function PythonTrack() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Overall Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
           <div className="rounded-lg sm:rounded-xl border border-border bg-card p-3 sm:p-4 text-center">
             <span className="text-xl sm:text-2xl">🟢</span>
-            <p className="text-lg sm:text-2xl font-bold text-success mt-1">{beginnerProblems.filter(p => solvedIds.has(p.id)).length}/{beginnerProblems.length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-success mt-1">{solvedEasy}/{totalEasy}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">Beginner</p>
           </div>
           <div className="rounded-lg sm:rounded-xl border border-border bg-card p-3 sm:p-4 text-center">
             <span className="text-xl sm:text-2xl">🟡</span>
-            <p className="text-lg sm:text-2xl font-bold text-warning mt-1">{intermediateProblems.filter(p => solvedIds.has(p.id)).length}/{intermediateProblems.length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-warning mt-1">{solvedMedium}/{totalMedium}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">Intermediate</p>
           </div>
           <div className="rounded-lg sm:rounded-xl border border-border bg-card p-3 sm:p-4 text-center">
             <span className="text-xl sm:text-2xl">🔴</span>
-            <p className="text-lg sm:text-2xl font-bold text-destructive mt-1">{advancedProblems.filter(p => solvedIds.has(p.id)).length}/{advancedProblems.length}</p>
+            <p className="text-lg sm:text-2xl font-bold text-destructive mt-1">{solvedHard}/{totalHard}</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">Advanced</p>
           </div>
         </div>
 
-        {/* Problem Lists by Level */}
-        {renderProblemList(beginnerProblems, 'Beginner Level (1-10)', '🟢')}
-        {renderProblemList(intermediateProblems, 'Intermediate Level (11-20)', '🟡')}
-        {renderProblemList(advancedProblems, 'Advanced Level (21-30)', '🔴')}
+        {/* Expand/Collapse Controls */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg sm:text-xl font-bold">Problem Categories</h2>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={expandAll} className="text-xs">
+              Expand All
+            </Button>
+            <Button variant="outline" size="sm" onClick={collapseAll} className="text-xs">
+              Collapse All
+            </Button>
+          </div>
+        </div>
+
+        {/* Category Sections */}
+        {problemsByCategory.map((categoryData, index) => renderCategorySection(categoryData, index))}
 
         {/* Certificate Dialog */}
         <Dialog open={showCertificate} onOpenChange={setShowCertificate}>
