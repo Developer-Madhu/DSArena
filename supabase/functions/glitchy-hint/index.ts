@@ -12,10 +12,10 @@ serve(async (req) => {
 
   try {
     const { code, problem, language, error } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!GOOGLE_AI_API_KEY) {
+      throw new Error("GOOGLE_AI_API_KEY is not configured");
     }
 
     const systemPrompt = `You are Glitchy, a friendly coding buddy who helps coders learn!
@@ -38,27 +38,35 @@ Respond as Glitchy! Keep it short and helpful.`;
       ? `There's an error in this code:\n\`\`\`${language}\n${code}\n\`\`\`\n\nError: ${error}\n\nGive me a hint about what's wrong!`
       : `I'm working on this code:\n\`\`\`${language}\n${code}\n\`\`\`\n\nAny tips or hints for me?`;
 
-    console.log("Calling Lovable AI for Glitchy hint...");
+    console.log("Calling Google Gemini for Glitchy hint...");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-        max_tokens: 200,
-      }),
-    });
+    // Call Google Gemini API directly
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: systemPrompt + "\n\n" + userMessage }
+              ]
+            }
+          ],
+          generationConfig: {
+            maxOutputTokens: 200,
+            temperature: 0.7,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Google AI error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
@@ -69,11 +77,13 @@ Respond as Glitchy! Keep it short and helpful.`;
         });
       }
       
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`Google AI error: ${response.status}`);
     }
 
     const data = await response.json();
-    const hint = data.choices?.[0]?.message?.content || "Hmm, let me think about this... *scratches head*";
+    console.log("Google AI response:", JSON.stringify(data));
+    
+    const hint = data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm, let me think about this... *scratches head*";
 
     // Determine mood based on context
     let mood = "thinking";
