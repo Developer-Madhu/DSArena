@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { fetchSolvedProblems } from '@/lib/progressStorage';
 import { getTimeStats, formatDuration, TimeStats } from '@/lib/timeTracking';
 import { Leaderboard } from '@/components/leaderboard/Leaderboard';
+import { SkillProfile } from '@/components/arena/SkillProfile';
 import {
   Trophy,
   Target,
@@ -31,6 +32,7 @@ import {
   CalendarDays,
   PlayCircle,
   Timer,
+  Brain,
 } from 'lucide-react';
 import { problemsData } from '@/lib/problemsData';
 import { getAvailableTracks, LanguageTrack } from '@/lib/languageTracksData';
@@ -302,47 +304,13 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Time Stats & Leaderboard Row */}
-        <div className="mb-6 sm:mb-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Time Statistics */}
-          <Card className="lg:col-span-1">
-            <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Timer className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                Time Statistics
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 sm:px-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <div className="text-2xl font-bold text-primary">
-                    {timeStats ? formatDuration(timeStats.avgTimePerProblem) : '0s'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Avg per Problem</div>
-                </div>
-                <div className="text-center p-3 rounded-lg bg-muted/50">
-                  <div className="text-2xl font-bold text-accent">
-                    {timeStats ? formatDuration(timeStats.totalTimeToday) : '0s'}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Today</div>
-                </div>
-              </div>
-              <div className="text-center p-3 rounded-lg bg-primary/10 border border-primary/20">
-                <div className="text-xl font-bold text-primary">
-                  {timeStats ? formatDuration(timeStats.totalTimeAllTime) : '0s'}
-                </div>
-                <div className="text-xs text-muted-foreground">Total Time Coding</div>
-              </div>
-              <div className="text-center p-2 rounded-lg bg-muted/30">
-                <div className="text-sm font-medium">
-                  {timeStats?.problemSessionsToday || 0} problem sessions today
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Skill Profile & Leaderboard Row */}
+        <div className="mb-6 sm:mb-8 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Skill Profile */}
+          <SkillProfile />
 
           {/* Leaderboard */}
-          <Leaderboard className="lg:col-span-2" />
+          <Leaderboard />
         </div>
 
         {/* Daily Challenge Section */}
