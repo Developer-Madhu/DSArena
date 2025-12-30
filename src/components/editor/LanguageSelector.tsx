@@ -10,6 +10,7 @@ interface LanguageSelectorProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  restrictedLanguage?: string | null; // If set, only show this language (for track problems)
 }
 
 const SUPPORTED_LANGUAGES = [
@@ -25,11 +26,19 @@ const SUPPORTED_LANGUAGES = [
   { value: 'kotlin', label: 'Kotlin', icon: '🎯' },
 ];
 
-export function LanguageSelector({ value, onChange, disabled = false }: LanguageSelectorProps) {
+export function LanguageSelector({ value, onChange, disabled = false, restrictedLanguage }: LanguageSelectorProps) {
+  // If restricted to a specific language (track problems), only show that language
+  const availableLanguages = restrictedLanguage 
+    ? SUPPORTED_LANGUAGES.filter(l => l.value === restrictedLanguage)
+    : SUPPORTED_LANGUAGES;
+  
   const selectedLang = SUPPORTED_LANGUAGES.find(l => l.value === value);
 
+  // If restricted, disable the selector
+  const isDisabled = disabled || !!restrictedLanguage;
+
   return (
-    <Select value={value} onValueChange={onChange} disabled={disabled}>
+    <Select value={value} onValueChange={onChange} disabled={isDisabled}>
       <SelectTrigger className="w-[160px] h-8 text-sm bg-muted border-border">
         <SelectValue>
           {selectedLang && (
@@ -41,7 +50,7 @@ export function LanguageSelector({ value, onChange, disabled = false }: Language
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {SUPPORTED_LANGUAGES.map((lang) => (
+        {availableLanguages.map((lang) => (
           <SelectItem key={lang.value} value={lang.value}>
             <span className="flex items-center gap-2">
               <span>{lang.icon}</span>

@@ -932,15 +932,12 @@ class Program {
                           <ChevronRight className="h-4 w-4" />
                         )}
                       </button>
-                      {isDSAProblem ? (
-                        <LanguageSelector
-                          value={selectedLanguage || 'python'}
-                          onChange={setSelectedLanguage}
-                          disabled={alreadySolved}
-                        />
-                      ) : (
-                        <span className="text-sm font-medium capitalize">{editorLanguage}</span>
-                      )}
+                      <LanguageSelector
+                        value={isDSAProblem ? (selectedLanguage || 'python') : defaultLanguage}
+                        onChange={setSelectedLanguage}
+                        disabled={alreadySolved}
+                        restrictedLanguage={isDSAProblem ? null : defaultLanguage}
+                      />
                     </div>
                     {/* Glitchy AI Assistant - positioned in header */}
                     <div className="flex items-center gap-2">
