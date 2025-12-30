@@ -942,28 +942,12 @@ class Program {
                     {/* Glitchy AI Assistant - positioned in header */}
                     <div className="flex items-center gap-2">
                       {!alreadySolved && problem && (
-                        <>
-                          <CodeAnalysisPopup
-                            code={code}
-                            language={editorLanguage}
-                            problemSlug={problem.slug}
-                            problemTitle={problem.title}
-                            problemDifficulty={problem.difficulty}
-                            problemCategory={problem.category}
-                            attemptCount={attemptCount}
-                            onDismiss={() => setShowAnalysis(false)}
-                            onProceed={() => {
-                              setShowAnalysis(false);
-                              runCode(true);
-                            }}
-                          />
-                          <GlitchyAssistant
-                            code={code}
-                            language={editorLanguage}
-                            problemDescription={problem.description}
-                            lastError={lastError}
-                          />
-                        </>
+                        <GlitchyAssistant
+                          code={code}
+                          language={editorLanguage}
+                          problemDescription={problem.description}
+                          lastError={lastError}
+                        />
                       )}
                     </div>
                   </div>
@@ -1040,7 +1024,7 @@ class Program {
                           </Button>
                           <Button
                             variant="default"
-                            onClick={() => runCode(true)}
+                            onClick={() => setShowAnalysis(true)}
                             disabled={running || submitting}
                             className="bg-primary hover:bg-primary/90"
                           >
@@ -1073,6 +1057,25 @@ class Program {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
+
+      {/* Code Analysis Popup - triggered on Submit */}
+      {!alreadySolved && problem && (
+        <CodeAnalysisPopup
+          code={code}
+          language={editorLanguage}
+          problemSlug={problem.slug}
+          problemTitle={problem.title}
+          problemDifficulty={problem.difficulty}
+          problemCategory={problem.category}
+          attemptCount={attemptCount}
+          isVisible={showAnalysis}
+          onDismiss={() => setShowAnalysis(false)}
+          onProceed={() => {
+            setShowAnalysis(false);
+            runCode(true);
+          }}
+        />
+      )}
     </div>
   );
 }

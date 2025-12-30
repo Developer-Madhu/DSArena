@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, Lightbulb, Zap, AlertTriangle } from 'lucide-react';
+import { X, Lightbulb, Zap, AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,6 +14,7 @@ interface CodeAnalysisPopupProps {
   problemDifficulty: string;
   problemCategory: string;
   attemptCount: number;
+  isVisible: boolean;
   onDismiss: () => void;
   onProceed: () => void;
 }
@@ -38,15 +39,28 @@ export function CodeAnalysisPopup({
   problemDifficulty,
   problemCategory,
   attemptCount,
+  isVisible,
   onDismiss,
   onProceed,
 }: CodeAnalysisPopupProps) {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dismissed, setDismissed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [analyzed, setAnalyzed] = useState(false);
 
+  // Analyze code only when popup becomes visible
   useEffect(() => {
+    if (!isVisible || analyzed) return;
+    
     const analyzeCode = async () => {
+      // Skip if code is just starter code or too short
+      const codeLines = code.split('\n').filter(l => l.trim() && !l.trim().startsWith('#') && !l.trim().startsWith('//'));
+      if (codeLines.length < 3) {
+        // Not enough meaningful code to analyze - proceed directly
+        onProceed();
+        return;
+      }
+
+      setLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke('analyze-code', {
           body: {
@@ -64,38 +78,59 @@ export function CodeAnalysisPopup({
           },
         });
 
-        if (!error && data && data.isSuboptimal) {
+        if (!error && data && data.isSuboptimal && data.hint) {
           setAnalysis(data);
+          setAnalyzed(true);
         } else {
-          setDismissed(true);
+          // No issues found - proceed directly
+          onProceed();
         }
       } catch (err) {
         console.error('Code analysis failed:', err);
-        setDismissed(true);
+        // On error, just proceed with execution
+        onProceed();
       } finally {
         setLoading(false);
       }
     };
 
-    if (code.trim().length > 20) {
-      analyzeCode();
-    } else {
-      setDismissed(true);
-      setLoading(false);
-    }
-  }, [code, language, problemSlug, problemTitle, problemDifficulty, problemCategory, attemptCount]);
+    analyzeCode();
+  }, [isVisible, analyzed, code, language, problemSlug, problemTitle, problemDifficulty, problemCategory, attemptCount, onProceed]);
 
-  if (loading || dismissed || !analysis) {
-    return null;
+  // Reset analysis state when code changes significantly
+  useEffect(() => {
+    setAnalyzed(false);
+    setAnalysis(null);
+  }, [problemSlug]);
+
+  if (!isVisible) return null;
+
+  // Show loading state while analyzing
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in">
+        <Card className="w-full max-w-sm mx-4 border-2 border-primary/30 shadow-2xl">
+          <CardContent className="p-6 flex flex-col items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+            <p className="text-sm text-muted-foreground">Analyzing your code...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
+  // If no analysis or not suboptimal, don't show popup
+  if (!analysis) return null;
+
   const handleDismiss = () => {
-    setDismissed(true);
+    setAnalyzed(false);
+    setAnalysis(null);
     onDismiss();
   };
 
   const handleProceed = () => {
-    setDismissed(true);
+    setAnalyzed(false);
+    setAnalysis(null);
     onProceed();
   };
 
