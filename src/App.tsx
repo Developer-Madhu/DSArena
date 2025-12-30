@@ -8,7 +8,6 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PersonalizedAssistant } from "@/components/assistant/PersonalizedAssistant";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
 import Problems from "./pages/Problems";
 import ProblemDetail from "./pages/ProblemDetail";
 import Dashboard from "./pages/Dashboard";
@@ -35,7 +34,6 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/problems" element={<ProtectedRoute><Problems /></ProtectedRoute>} />
             <Route path="/python-track" element={<ProtectedRoute><PythonTrack /></ProtectedRoute>} />
             <Route path="/track/:slug" element={<ProtectedRoute><LanguageTrackPage /></ProtectedRoute>} />

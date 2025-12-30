@@ -13,16 +13,16 @@ serve(async (req) => {
   try {
     const { code, problem, language, error } = await req.json();
     
-    console.log("Generating Glitchy hint using Lovable AI...");
+    console.log("Generating Glitchy hint using Google Gemini...");
     console.log("Language:", language);
     console.log("Has error:", !!error);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY');
     
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+    if (!GOOGLE_AI_API_KEY) {
+      console.error("GOOGLE_AI_API_KEY not configured");
       return new Response(JSON.stringify({ 
-        hint: "DUDE! I need my brain configured first. Lovable AI key is missing!",
+        hint: "DUDE! I need my brain configured first. Ask an admin to set up my AI key!",
         mood: "sleepy"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -49,53 +49,49 @@ Respond as Glitchy! Keep it short and helpful.`;
       ? `There's an error in this code:\n\`\`\`${language}\n${code}\n\`\`\`\n\nError: ${error}\n\nGive me a hint about what's wrong!`
       : `I'm working on this code:\n\`\`\`${language}\n${code}\n\`\`\`\n\nAny tips or hints for me?`;
 
-    // Use Lovable AI Gateway
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage }
-        ],
-        max_tokens: 200,
-        temperature: 0.7,
-      }),
-    });
+    // Use Google Gemini API
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: `${systemPrompt}\n\n${userMessage}` }]
+            }
+          ],
+          generationConfig: {
+            maxOutputTokens: 200,
+            temperature: 0.7,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Lovable AI error:", response.status, errorText);
+      console.error("Google Gemini error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ 
-          hint: "DUDE! I'm a bit overwhelmed right now. Too many requests - try again in a moment!",
+          hint: "DUDE! I'm a bit overwhelmed right now. Try again in a moment!",
           mood: "tired"
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ 
-          hint: "DUDE! My brain needs some fuel (credits). Ask the admin to top up Lovable AI credits!",
-          mood: "sleepy"
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      throw new Error(`Lovable AI error: ${response.status}`);
+      throw new Error(`Google Gemini error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log("Lovable AI response received");
+    console.log("Google Gemini response received");
     
-    const hint = data.choices?.[0]?.message?.content || "Hmm, let me think about this... *scratches head*";
+    const hint = data.candidates?.[0]?.content?.parts?.[0]?.text || "Hmm, let me think about this... *scratches head*";
 
     // Determine mood based on context
     let mood = "thinking";
@@ -119,7 +115,7 @@ Respond as Glitchy! Keep it short and helpful.`;
       mood: "sleepy",
       error: error instanceof Error ? error.message : "Unknown error"
     }), {
-      status: 200,
+      status: 200, // Return 200 so the cat still shows something friendly
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

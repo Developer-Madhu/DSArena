@@ -54,8 +54,6 @@ export default function ProblemDetail() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [hasSavedDraft, setHasSavedDraft] = useState(false);
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [consoleOutput, setConsoleOutput] = useState('');
   const [showDescription, setShowDescription] = useState(true);
@@ -75,8 +73,7 @@ export default function ProblemDetail() {
   const { triggerVideoRecommendation, resetFailures } = useVideoRecommendations();
 
   // Find problem from local data (includes Python track)
-  // Check both slug and id since learning plan may store either
-  const problem = allProblemsData.find(p => p.slug === slug || p.id === slug);
+  const problem = allProblemsData.find(p => p.slug === slug);
   const problemIndex = allProblemsData.findIndex(p => p.slug === slug);
   
   // Check if this is a DSA problem (allows language selection) or a track problem (fixed language)
@@ -487,29 +484,15 @@ class Program {
     setBonusApplied(false);
   }, [slug, problem, navigate]);
 
-  // Load draft from database
+  // Load draft from localStorage
   useEffect(() => {
-    const loadDraft = async () => {
-      if (!problem || !user) return;
-      
-      try {
-        const { data } = await supabase
-          .from('drafts')
-          .select('code')
-          .eq('user_id', user.id)
-          .eq('problem_slug', problem.id)
-          .maybeSingle();
-        
-        if (data?.code) {
-          setCode(data.code);
-          setHasSavedDraft(true);
-        }
-      } catch (error) {
-        console.error('Failed to load draft:', error);
+    if (problem && user) {
+      const draftKey = `draft-${user.id}-${problem.id}`;
+      const savedDraft = localStorage.getItem(draftKey);
+      if (savedDraft) {
+        setCode(savedDraft);
       }
-    };
-    
-    loadDraft();
+    }
   }, [problem, user]);
 
   const triggerConfetti = () => {
@@ -562,50 +545,18 @@ class Program {
     }
   };
 
-  const saveDraft = useCallback(async () => {
+  const saveDraft = useCallback(() => {
     if (!user || !problem) {
       toast.error('Please sign in to save your draft');
       return;
     }
-    
-    setSaving(true);
-    try {
-      // Check if draft exists
-      const { data: existing } = await supabase
-        .from('drafts')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('problem_slug', problem.id)
-        .maybeSingle();
-
-      if (existing) {
-        // Update existing draft
-        await supabase
-          .from('drafts')
-          .update({ code: code, updated_at: new Date().toISOString() })
-          .eq('id', existing.id);
-      } else {
-        // Insert new draft - need to include problem_id for type compatibility
-        // Use a placeholder UUID since this column is required but we use problem_slug
-        await supabase
-          .from('drafts')
-          .insert({
-            user_id: user.id,
-            problem_id: '00000000-0000-0000-0000-000000000000', // Placeholder - we use problem_slug
-            problem_slug: problem.id,
-            code: code,
-          } as any);
-      }
-      
-      setHasSavedDraft(true);
-      toast.success('Progress saved! You can continue later.');
-    } catch (error) {
-      console.error('Failed to save draft:', error);
-      toast.error('Failed to save draft');
-    } finally {
-      setSaving(false);
-    }
-  }, [user, problem, code]);
+    // Save draft with language suffix for DSA problems
+    const draftKey = isDSAProblem 
+      ? `draft-${user.id}-${problem.id}-${editorLanguage}`
+      : `draft-${user.id}-${problem.id}`;
+    localStorage.setItem(draftKey, code);
+    toast.success('Draft saved');
+  }, [user, problem, code, isDSAProblem, editorLanguage]);
 
   const runCode = async (submitAll = false) => {
     if (!problem) return;
@@ -1072,21 +1023,6 @@ class Program {
                               <ArrowRight className="ml-2 h-4 w-4" />
                             </Button>
                           )}
-                          <Button
-                            variant="outline"
-                            onClick={saveDraft}
-                            disabled={saving || running || submitting}
-                            className={cn(
-                              hasSavedDraft && "border-success/50 text-success"
-                            )}
-                          >
-                            {saving ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                              <Save className="mr-2 h-4 w-4" />
-                            )}
-                            {hasSavedDraft ? 'Saved' : 'Save'}
-                          </Button>
                           <Button
                             variant="outline"
                             onClick={() => runCode(false)}

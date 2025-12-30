@@ -72,8 +72,7 @@ export default function Auth() {
           }
         } else {
           toast.success('Account created successfully!');
-          // New users go to onboarding
-          navigate('/onboarding');
+          navigate(redirectTo);
         }
       } else {
         const { error } = await signIn(email, password);

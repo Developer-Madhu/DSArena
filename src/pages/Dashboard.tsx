@@ -11,10 +11,7 @@ import { fetchSolvedProblems } from '@/lib/progressStorage';
 import { getTimeStats, formatDuration, TimeStats } from '@/lib/timeTracking';
 import { Leaderboard } from '@/components/leaderboard/Leaderboard';
 import { SkillProfile } from '@/components/arena/SkillProfile';
-import { LearningPlanPanel } from '@/components/dashboard/LearningPlanPanel';
-import { GlitchyCompanion } from '@/components/dashboard/GlitchyCompanion';
-import { useOnboardingCheck } from '@/hooks/useOnboardingCheck';
-import { syncLearningPlanWithSolved } from '@/lib/learningPlanService';
+import { RecommendationsPanel } from '@/components/dashboard/RecommendationsPanel';
 import {
   Trophy,
   Target,
@@ -73,7 +70,6 @@ interface TrackProgress {
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { needsOnboarding, loading: onboardingLoading } = useOnboardingCheck();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [solvedIds, setSolvedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -91,20 +87,11 @@ export default function Dashboard() {
   });
   const [challengeHistory, setChallengeHistory] = useState<any[]>([]);
   const [timeStats, setTimeStats] = useState<TimeStats | null>(null);
-  
-  // Redirect to auth if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     }
   }, [user, authLoading, navigate]);
-
-  // Redirect to onboarding if not completed
-  useEffect(() => {
-    if (!onboardingLoading && needsOnboarding && user) {
-      navigate('/onboarding');
-    }
-  }, [needsOnboarding, onboardingLoading, user, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -161,7 +148,7 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  if (authLoading || loading || onboardingLoading) {
+  if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -318,12 +305,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Glitchy Companion */}
-        <div className="mb-6 sm:mb-8">
-          <GlitchyCompanion />
-        </div>
-
-        {/* Skill Profile & Learning Plan Row */}
+        {/* Skill Profile & Leaderboard Row */}
         <div className="mb-6 sm:mb-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Skill Profile */}
           <SkillProfile />
@@ -331,8 +313,8 @@ export default function Dashboard() {
           {/* Leaderboard */}
           <Leaderboard />
           
-          {/* Personalized Learning Plan */}
-          <LearningPlanPanel />
+          {/* AI Recommendations */}
+          <RecommendationsPanel />
         </div>
 
         {/* Daily Challenge Section */}
