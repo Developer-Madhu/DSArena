@@ -16,7 +16,6 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-        pixel: ['"Press Start 2P"', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -81,11 +80,6 @@ export default {
           comment: "hsl(var(--syntax-comment))",
           variable: "hsl(var(--syntax-variable))",
         },
-        // Track-specific colors
-        python: "hsl(var(--python-color))",
-        javascript: "hsl(var(--javascript-color))",
-        java: "hsl(var(--java-color))",
-        cpp: "hsl(var(--cpp-color))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -114,16 +108,8 @@ export default {
           to: { opacity: "1", transform: "scale(1)" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 20px hsl(45 100% 51% / 0.3)" },
-          "50%": { boxShadow: "0 0 40px hsl(45 100% 51% / 0.5)" },
-        },
-        "bounce-subtle": {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-5px)" },
-        },
-        float: {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-10px)" },
+          "0%, 100%": { boxShadow: "0 0 20px hsl(173 80% 45% / 0.3)" },
+          "50%": { boxShadow: "0 0 40px hsl(173 80% 45% / 0.5)" },
         },
       },
       animation: {
@@ -133,24 +119,16 @@ export default {
         "slide-up": "slide-up 0.5s ease-out forwards",
         "scale-in": "scale-in 0.3s ease-out forwards",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        "bounce-subtle": "bounce-subtle 2s ease-in-out infinite",
-        float: "float 3s ease-in-out infinite",
       },
       backgroundImage: {
-        "gradient-primary": "linear-gradient(135deg, hsl(45 100% 51%) 0%, hsl(38 92% 60%) 100%)",
-        "gradient-accent": "linear-gradient(135deg, hsl(270 91% 65%) 0%, hsl(330 80% 60%) 100%)",
-        "gradient-dark": "linear-gradient(180deg, hsl(225 33% 10%) 0%, hsl(225 33% 7%) 100%)",
-        "gradient-radial": "radial-gradient(ellipse at center, hsl(45 100% 51% / 0.15) 0%, transparent 70%)",
-        "gradient-python": "linear-gradient(135deg, hsl(142 70% 50%) 0%, hsl(150 70% 40%) 100%)",
-        "gradient-javascript": "linear-gradient(135deg, hsl(45 100% 51%) 0%, hsl(38 92% 50%) 100%)",
-        "gradient-java": "linear-gradient(135deg, hsl(15 85% 55%) 0%, hsl(5 80% 50%) 100%)",
-        "gradient-cpp": "linear-gradient(135deg, hsl(210 90% 55%) 0%, hsl(220 80% 50%) 100%)",
+        "gradient-primary": "linear-gradient(135deg, hsl(173 80% 45%) 0%, hsl(199 95% 55%) 100%)",
+        "gradient-accent": "linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(330 80% 60%) 100%)",
+        "gradient-dark": "linear-gradient(180deg, hsl(222 47% 9%) 0%, hsl(222 47% 6%) 100%)",
+        "gradient-radial": "radial-gradient(ellipse at center, hsl(173 80% 45% / 0.15) 0%, transparent 70%)",
       },
       boxShadow: {
-        glow: "0 0 40px hsl(45 100% 51% / 0.2)",
-        "glow-lg": "0 0 60px hsl(45 100% 51% / 0.3)",
-        brutal: "4px 4px 0px hsl(225 33% 3%)",
-        "brutal-hover": "6px 6px 0px hsl(225 33% 3%)",
+        glow: "0 0 40px hsl(173 80% 45% / 0.2)",
+        "glow-lg": "0 0 60px hsl(173 80% 45% / 0.3)",
       },
     },
   },

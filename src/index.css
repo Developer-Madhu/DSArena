@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,88 +6,75 @@
 
 @layer base {
   :root {
-    /* Codedex-inspired dark navy theme */
-    --background: 225 33% 7%;
-    --foreground: 60 9% 98%;
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
 
-    --card: 225 33% 10%;
-    --card-foreground: 60 9% 98%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 225 33% 9%;
-    --popover-foreground: 60 9% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 96%;
 
-    /* Golden Yellow Primary (Codedex CTA color) */
-    --primary: 45 100% 51%;
-    --primary-foreground: 225 33% 7%;
+    --primary: 173 80% 45%;
+    --primary-foreground: 222 47% 6%;
 
-    --secondary: 225 25% 15%;
-    --secondary-foreground: 60 9% 90%;
+    --secondary: 222 30% 15%;
+    --secondary-foreground: 210 40% 90%;
 
-    --muted: 225 25% 13%;
-    --muted-foreground: 220 15% 55%;
+    --muted: 222 30% 12%;
+    --muted-foreground: 215 20% 55%;
 
-    /* Vibrant Purple Accent */
-    --accent: 270 91% 65%;
-    --accent-foreground: 60 9% 98%;
+    --accent: 262 83% 58%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 60 9% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
 
-    --success: 142 76% 48%;
-    --success-foreground: 225 33% 7%;
+    --success: 142 71% 45%;
+    --success-foreground: 222 47% 6%;
 
     --warning: 38 92% 50%;
-    --warning-foreground: 225 33% 7%;
+    --warning-foreground: 222 47% 6%;
 
-    /* Neubrutalist border style */
-    --border: 225 20% 20%;
-    --input: 225 25% 15%;
-    --ring: 45 100% 51%;
+    --border: 222 30% 18%;
+    --input: 222 30% 15%;
+    --ring: 173 80% 45%;
 
-    /* Neubrutalist radius - sharper corners */
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Code syntax colors */
-    --syntax-keyword: 270 91% 68%;
-    --syntax-string: 142 76% 55%;
+    --syntax-keyword: 262 83% 68%;
+    --syntax-string: 142 71% 55%;
     --syntax-number: 38 92% 60%;
     --syntax-function: 199 95% 65%;
-    --syntax-comment: 220 15% 45%;
-    --syntax-variable: 60 9% 85%;
+    --syntax-comment: 215 20% 45%;
+    --syntax-variable: 210 40% 85%;
 
     /* Difficulty colors */
-    --easy: 142 76% 48%;
+    --easy: 142 71% 45%;
     --medium: 38 92% 50%;
-    --hard: 0 84% 60%;
-
-    /* Track Colors (Codedex-style vibrant) */
-    --python-color: 142 70% 50%;
-    --javascript-color: 45 100% 51%;
-    --java-color: 15 85% 55%;
-    --cpp-color: 210 90% 55%;
+    --hard: 0 72% 51%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(45 100% 51%) 0%, hsl(38 92% 60%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(270 91% 65%) 0%, hsl(330 80% 60%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(225 33% 10%) 0%, hsl(225 33% 7%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(45 100% 51% / 0.15) 0%, transparent 70%);
+    --gradient-primary: linear-gradient(135deg, hsl(173 80% 45%) 0%, hsl(199 95% 55%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(330 80% 60%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(222 47% 9%) 0%, hsl(222 47% 6%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(173 80% 45% / 0.15) 0%, transparent 70%);
 
-    /* Neubrutalist Shadows */
-    --shadow-brutal: 4px 4px 0px hsl(225 33% 3%);
-    --shadow-brutal-hover: 6px 6px 0px hsl(225 33% 3%);
-    --shadow-sm: 0 1px 2px hsl(225 33% 3% / 0.5);
-    --shadow-md: 0 4px 12px hsl(225 33% 3% / 0.5);
-    --shadow-lg: 0 8px 24px hsl(225 33% 3% / 0.6);
-    --shadow-glow: 0 0 40px hsl(45 100% 51% / 0.2);
+    /* Shadows */
+    --shadow-sm: 0 1px 2px hsl(222 47% 3% / 0.5);
+    --shadow-md: 0 4px 12px hsl(222 47% 3% / 0.5);
+    --shadow-lg: 0 8px 24px hsl(222 47% 3% / 0.6);
+    --shadow-glow: 0 0 40px hsl(173 80% 45% / 0.2);
 
-    --sidebar-background: 225 33% 9%;
-    --sidebar-foreground: 60 9% 90%;
-    --sidebar-primary: 45 100% 51%;
-    --sidebar-primary-foreground: 225 33% 7%;
-    --sidebar-accent: 225 25% 15%;
-    --sidebar-accent-foreground: 60 9% 90%;
-    --sidebar-border: 225 20% 20%;
-    --sidebar-ring: 45 100% 51%;
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 173 80% 45%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 222 30% 15%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 222 30% 18%;
+    --sidebar-ring: 173 80% 45%;
   }
 }
 
@@ -104,39 +91,16 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
   }
-
-  /* Pixel font for headings */
-  .font-pixel {
-    font-family: 'Press Start 2P', cursive;
-  }
 }
 
 @layer components {
-  /* Neubrutalist Card Style */
-  .card-brutal {
-    @apply bg-card border-2 border-foreground/20 rounded-lg;
-    box-shadow: var(--shadow-brutal);
-    transition: all 0.2s ease;
-  }
-
-  .card-brutal:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: var(--shadow-brutal-hover);
-  }
-
-  /* Glass Card (kept for backwards compatibility) */
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border-2 border-border shadow-lg;
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 shadow-lg;
   }
 
   .gradient-text {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-primary);
-  }
-
-  .gradient-text-accent {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-accent);
   }
 
   .gradient-border {
@@ -147,7 +111,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    padding: 2px;
+    padding: 1px;
     border-radius: inherit;
     background: var(--gradient-primary);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -160,58 +124,31 @@
     box-shadow: var(--shadow-glow);
   }
 
-  /* Neubrutalist Button Style */
-  .btn-brutal {
-    @apply font-bold border-2 border-foreground/30 rounded-md px-6 py-3;
-    box-shadow: 3px 3px 0px hsl(var(--foreground) / 0.2);
-    transition: all 0.15s ease;
-  }
-
-  .btn-brutal:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0px hsl(var(--foreground) / 0.2);
-  }
-
-  .btn-brutal:active {
-    transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0px hsl(var(--foreground) / 0.2);
-  }
-
   .hover-lift {
-    @apply transition-all duration-200;
+    @apply transition-all duration-300;
   }
 
   .hover-lift:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
   }
 
-  /* Topic Pills (Codedex style) */
-  .topic-pill {
-    @apply rounded-full border-2 border-border bg-secondary/50 px-4 py-2 text-sm font-semibold;
-    @apply transition-all duration-200;
-  }
-
-  .topic-pill:hover {
-    @apply border-primary bg-primary/10 text-primary;
-  }
-
   .difficulty-easy {
-    @apply text-success bg-success/10 border-2 border-success/30;
+    @apply text-success bg-success/10 border-success/30;
   }
 
   .difficulty-medium {
-    @apply text-warning bg-warning/10 border-2 border-warning/30;
+    @apply text-warning bg-warning/10 border-warning/30;
   }
 
   .difficulty-hard {
-    @apply text-destructive bg-destructive/10 border-2 border-destructive/30;
+    @apply text-destructive bg-destructive/10 border-destructive/30;
   }
 
   /* Custom scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
@@ -219,8 +156,7 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full border-2 border-transparent;
-    background-clip: content-box;
+    @apply bg-muted-foreground/30 rounded-full;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -242,43 +178,6 @@
 
   .animate-pulse-glow {
     animation: pulseGlow 2s ease-in-out infinite;
-  }
-
-  .animate-bounce-subtle {
-    animation: bounceSubtle 2s ease-in-out infinite;
-  }
-
-  /* Quest/Adventure card styling */
-  .quest-card {
-    @apply relative bg-card border-2 border-border rounded-lg overflow-hidden;
-    box-shadow: var(--shadow-brutal);
-  }
-
-  .quest-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--gradient-primary);
-  }
-
-  /* Track-specific colors */
-  .track-python {
-    --track-color: hsl(var(--python-color));
-  }
-
-  .track-javascript {
-    --track-color: hsl(var(--javascript-color));
-  }
-
-  .track-java {
-    --track-color: hsl(var(--java-color));
-  }
-
-  .track-cpp {
-    --track-color: hsl(var(--cpp-color));
   }
 }
 
@@ -315,19 +214,10 @@
 
 @keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 20px hsl(45 100% 51% / 0.3);
+    box-shadow: 0 0 20px hsl(173 80% 45% / 0.3);
   }
   50% {
-    box-shadow: 0 0 40px hsl(45 100% 51% / 0.5);
-  }
-}
-
-@keyframes bounceSubtle {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
+    box-shadow: 0 0 40px hsl(173 80% 45% / 0.5);
   }
 }
 
@@ -438,21 +328,4 @@
 .paste-blocked-toast {
   @apply fixed bottom-4 right-4 bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-lg shadow-lg z-50;
   animation: slideUp 0.3s ease-out;
-}
-
-/* 8-bit pixel art decoration */
-.pixel-decoration {
-  image-rendering: pixelated;
-  image-rendering: -moz-crisp-edges;
-  image-rendering: crisp-edges;
-}
-
-/* Adventure progress bar */
-.progress-adventure {
-  @apply h-3 rounded-full bg-muted overflow-hidden border-2 border-border;
-}
-
-.progress-adventure-fill {
-  @apply h-full rounded-full transition-all duration-500;
-  background: var(--gradient-primary);
 }
