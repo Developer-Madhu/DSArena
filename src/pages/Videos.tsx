@@ -1,83 +1,87 @@
 import { useState } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Play, Clock, BookOpen, ChevronRight, Video } from 'lucide-react';
+import { Play, BookOpen, ChevronRight, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VideoItem {
   id: string;
   title: string;
-  description: string;
   youtubeId: string;
-  duration: string;
   topic: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
 }
 
-// Placeholder videos - replace with actual YouTube video IDs
+// Videos organized by topic from YouTube playlists
 const videos: VideoItem[] = [
-  {
-    id: '1',
-    title: 'Introduction to Data Structures',
-    description: 'Learn the fundamentals of data structures and why they matter in programming.',
-    youtubeId: 'dQw4w9WgXcQ', // Placeholder - replace with actual video ID
-    duration: '15:30',
-    topic: 'Fundamentals',
-    difficulty: 'beginner',
-  },
-  {
-    id: '2',
-    title: 'Arrays and Strings Deep Dive',
-    description: 'Master array manipulation and string algorithms for technical interviews.',
-    youtubeId: 'dQw4w9WgXcQ', // Placeholder
-    duration: '22:45',
-    topic: 'Arrays',
-    difficulty: 'beginner',
-  },
-  {
-    id: '3',
-    title: 'Linked Lists Explained',
-    description: 'Understanding singly and doubly linked lists with practical examples.',
-    youtubeId: 'dQw4w9WgXcQ', // Placeholder
-    duration: '18:20',
-    topic: 'Linked Lists',
-    difficulty: 'intermediate',
-  },
-  {
-    id: '4',
-    title: 'Binary Trees and BST',
-    description: 'Complete guide to binary trees, traversals, and binary search trees.',
-    youtubeId: 'dQw4w9WgXcQ', // Placeholder
-    duration: '28:15',
-    topic: 'Trees',
-    difficulty: 'intermediate',
-  },
-  {
-    id: '5',
-    title: 'Graph Algorithms Masterclass',
-    description: 'BFS, DFS, shortest paths, and other essential graph algorithms.',
-    youtubeId: 'dQw4w9WgXcQ', // Placeholder
-    duration: '35:00',
-    topic: 'Graphs',
-    difficulty: 'advanced',
-  },
-  {
-    id: '6',
-    title: 'Dynamic Programming Patterns',
-    description: 'Learn the most common DP patterns for coding interviews.',
-    youtubeId: 'dQw4w9WgXcQ', // Placeholder
-    duration: '42:30',
-    topic: 'Dynamic Programming',
-    difficulty: 'advanced',
-  },
+  // Arrays - Playlist: PLqM7alHXFySEQDk2MDfbwEdjd2svVJH9p
+  { id: 'arr-1', title: 'WHAT IS ARRAY?', youtubeId: '3_x_Fb31NLE', topic: 'Arrays' },
+  { id: 'arr-2', title: 'ARRAY PRACTICE PROBLEMS', youtubeId: 'J7EhXvnixRM', topic: 'Arrays' },
+  { id: 'arr-3', title: 'Longest Span with same Sum', youtubeId: 'xtfj4-r_Ahs', topic: 'Arrays' },
+  { id: 'arr-4', title: 'Union and Intersection of two sorted arrays', youtubeId: 'EQQp4B_CU5Q', topic: 'Arrays' },
+  { id: 'arr-5', title: 'Find the minimum distance between two numbers', youtubeId: 'hoceGcqQczM', topic: 'Arrays' },
+  { id: 'arr-6', title: 'Leaders in an array', youtubeId: 'NyRZm1pzNmQ', topic: 'Arrays' },
+  { id: 'arr-7', title: 'Majority Element', youtubeId: 'uwogtyFiDLg', topic: 'Arrays' },
+  { id: 'arr-8', title: 'Find the Number Occurring Odd Number of Times', youtubeId: 'hySR1exD5PE', topic: 'Arrays' },
+  { id: 'arr-9', title: 'Replace every element with the greatest element on right side', youtubeId: 'bLb8e83OK7o', topic: 'Arrays' },
+  { id: 'arr-10', title: 'Find a Fixed Point in a given array', youtubeId: 'hASRzBXY5kY', topic: 'Arrays' },
+
+  // Linked Lists - Playlist: PLqM7alHXFySH41ZxzrPNj2pAYPOI8ITe7
+  { id: 'll-1', title: 'WHAT IS LINKED LIST?', youtubeId: 'MCG7S2fGUeU', topic: 'Linked Lists' },
+  { id: 'll-2', title: 'Linked List Set 1 (Introduction)', youtubeId: 'ge8iG7JecR4', topic: 'Linked Lists' },
+  { id: 'll-3', title: 'Linked List Set 2 (Inserting a node)', youtubeId: 'zgCROSijBRw', topic: 'Linked Lists' },
+  { id: 'll-4', title: 'Linked List Set 3 (Deleting a node)', youtubeId: 'DoNRZTumxB0', topic: 'Linked Lists' },
+  { id: 'll-5', title: 'Linked List vs Array', youtubeId: 'QRpbNTKH6XY', topic: 'Linked Lists' },
+  { id: 'll-6', title: 'Delete a Linked List node at a given position', youtubeId: 'BrjLWNuJ3HA', topic: 'Linked Lists' },
+  { id: 'll-7', title: 'Flattening a Linked List', youtubeId: 'PSKZJDtitZw', topic: 'Linked Lists' },
+  { id: 'll-8', title: 'Detection of Loop in a Linked List', youtubeId: 'Aup0kOWoMVg', topic: 'Linked Lists' },
+
+  // Graphs - Playlist: PLqM7alHXFySEaZgcg7uRYJFBnYMLti-nh
+  { id: 'gr-1', title: 'GRAPH Data Structure', youtubeId: 'gTsoyORhqkg', topic: 'Graphs' },
+  { id: 'gr-2', title: 'Graph Practice Problems', youtubeId: 'pCmsQVHYXK0', topic: 'Graphs' },
+  { id: 'gr-3', title: 'Graph and its representations', youtubeId: '1n5XPFcvxds', topic: 'Graphs' },
+  { id: 'gr-4', title: 'Breadth First Traversal for a Graph', youtubeId: '0u78hx-66Xk', topic: 'Graphs' },
+  { id: 'gr-5', title: 'Applications of Breadth First Traversal', youtubeId: '-CzEI2r5OTs', topic: 'Graphs' },
+  { id: 'gr-6', title: 'Depth First Traversal for a Graph', youtubeId: 'Y40bRyPQQr0', topic: 'Graphs' },
+  { id: 'gr-7', title: 'Applications of Depth First Search', youtubeId: 'dE3wBxYobrU', topic: 'Graphs' },
+  { id: 'gr-8', title: 'Length of shortest chain to reach a target word', youtubeId: '6pIC20wCm20', topic: 'Graphs' },
+
+  // Stacks - Playlist: PLqM7alHXFySF7Lap-wi5qlaD8OEBx9RMV
+  { id: 'st-1', title: 'WHAT IS STACK?', youtubeId: 'lhhyE7NVcbg', topic: 'Stacks' },
+  { id: 'st-2', title: 'Stack Practice Question (Parenthesis Checker)', youtubeId: '2ay2GCrmf9E', topic: 'Stacks' },
+  { id: 'st-3', title: 'Stack Set 1 (Introduction)', youtubeId: 'vZEuSFXSMDI', topic: 'Stacks' },
+  { id: 'st-4', title: 'Stack Set 2 (Infix to Postfix)', youtubeId: 'ysDharaQXkw', topic: 'Stacks' },
+  { id: 'st-5', title: 'Stack Set 3 (Reverse a string)', youtubeId: 'jBY4JD25Iks', topic: 'Stacks' },
+  { id: 'st-6', title: 'Stack Set 4 (Evaluation of Postfix)', youtubeId: '_TGyjXjg04w', topic: 'Stacks' },
+  { id: 'st-7', title: 'Next Greater Element', youtubeId: 'sgelJuvX1bU', topic: 'Stacks' },
+
+  // Queues - Playlist: PLqM7alHXFySG6wgjVeEat_ouTIi0IBQ6D
+  { id: 'qu-1', title: 'WHAT IS QUEUE?', youtubeId: 'ypJwoz_SXTo', topic: 'Queues' },
+  { id: 'qu-2', title: 'QUEUE PRACTICE PROBLEMS', youtubeId: 'KG4dbF5xRig', topic: 'Queues' },
+  { id: 'qu-3', title: 'Queue Set 1 (Array Implementation)', youtubeId: 'q5oOYxfOD1c', topic: 'Queues' },
+  { id: 'qu-4', title: 'Queue Set 2 (Linked List Implementation)', youtubeId: 'C6KjYbAarYI', topic: 'Queues' },
+  { id: 'qu-5', title: 'Implement a Stack using Single Queue', youtubeId: 'hC1UplBFEj0', topic: 'Queues' },
+  { id: 'qu-6', title: 'Circular Queue', youtubeId: 'eKxWdc1DVFE', topic: 'Queues' },
+  { id: 'qu-7', title: 'Reversing a Queue', youtubeId: 'aUU23JDaErs', topic: 'Queues' },
+
+  // Trees - Playlist: PLqM7alHXFySHCXD7r1J0ky9Zg_GBB1dbk
+  { id: 'tr-1', title: 'Tree Traversals', youtubeId: 'IpyCqRmaKW4', topic: 'Trees' },
+  { id: 'tr-2', title: 'AVL Tree - Insertion', youtubeId: 'ygZMI2YIcvk', topic: 'Trees' },
+  { id: 'tr-3', title: 'Inorder Tree Traversal without Recursion', youtubeId: 'VsxLHGUqAKs', topic: 'Trees' },
+  { id: 'tr-4', title: 'Level Order Tree Traversal', youtubeId: 'kQ-aoKbGKSo', topic: 'Trees' },
+  { id: 'tr-5', title: 'Red Black Tree (Insertion)', youtubeId: 'YCo2-H2CL6Q', topic: 'Trees' },
+  { id: 'tr-6', title: 'Find the Maximum Depth or Height of a Tree', youtubeId: 'TQI_m32_AeU', topic: 'Trees' },
+  { id: 'tr-7', title: 'Lowest Common Ancestor in a BST', youtubeId: 'zlTsz-apm4U', topic: 'Trees' },
 ];
 
-const difficultyColors = {
-  beginner: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  intermediate: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  advanced: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+const topicColors: Record<string, string> = {
+  'Arrays': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  'Linked Lists': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+  'Graphs': 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  'Stacks': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+  'Queues': 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+  'Trees': 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
 };
 
 export default function Videos() {
@@ -138,14 +142,10 @@ export default function Videos() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={difficultyColors[selectedVideo.difficulty]}>
-                      {selectedVideo.difficulty}
-                    </Badge>
-                    <Badge variant="secondary">{selectedVideo.topic}</Badge>
-                  </div>
+                  <Badge variant="outline" className={topicColors[selectedVideo.topic] || 'bg-primary/10 text-primary'}>
+                    {selectedVideo.topic}
+                  </Badge>
                   <h2 className="text-2xl font-semibold">{selectedVideo.title}</h2>
-                  <p className="text-muted-foreground">{selectedVideo.description}</p>
                 </div>
               </div>
             ) : (
@@ -171,8 +171,8 @@ export default function Videos() {
               <BookOpen className="h-4 w-4" />
               Playlist ({filteredVideos.length} videos)
             </h3>
-            <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-              {filteredVideos.map((video) => (
+            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+              {filteredVideos.map((video, index) => (
                 <Card
                   key={video.id}
                   className={cn(
@@ -181,31 +181,28 @@ export default function Videos() {
                   )}
                   onClick={() => setSelectedVideo(video)}
                 >
-                  <CardHeader className="p-4 pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-sm font-medium leading-tight">
-                        {video.title}
-                      </CardTitle>
+                  <CardHeader className="p-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground font-mono w-5">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-sm font-medium leading-tight truncate">
+                          {video.title}
+                        </CardTitle>
+                        <Badge 
+                          variant="outline" 
+                          className={cn('text-[10px] px-1.5 mt-1', topicColors[video.topic])}
+                        >
+                          {video.topic}
+                        </Badge>
+                      </div>
                       <ChevronRight className={cn(
                         'h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform',
                         selectedVideo?.id === video.id && 'text-primary rotate-90'
                       )} />
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <CardDescription className="text-xs line-clamp-2 mb-2">
-                      {video.description}
-                    </CardDescription>
-                    <div className="flex items-center gap-2 text-xs">
-                      <Badge variant="outline" className={cn('text-[10px] px-1.5', difficultyColors[video.difficulty])}>
-                        {video.difficulty}
-                      </Badge>
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {video.duration}
-                      </span>
-                    </div>
-                  </CardContent>
                 </Card>
               ))}
             </div>
