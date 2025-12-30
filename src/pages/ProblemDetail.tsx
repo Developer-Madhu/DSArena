@@ -75,7 +75,8 @@ export default function ProblemDetail() {
   const { triggerVideoRecommendation, resetFailures } = useVideoRecommendations();
 
   // Find problem from local data (includes Python track)
-  const problem = allProblemsData.find(p => p.slug === slug);
+  // Check both slug and id since learning plan may store either
+  const problem = allProblemsData.find(p => p.slug === slug || p.id === slug);
   const problemIndex = allProblemsData.findIndex(p => p.slug === slug);
   
   // Check if this is a DSA problem (allows language selection) or a track problem (fixed language)
