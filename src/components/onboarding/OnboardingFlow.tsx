@@ -78,7 +78,7 @@ export default function OnboardingFlow() {
           .slice(0, 10) // Start with first 10 problems
           .map((p, index) => ({
             user_id: user.id,
-            problem_id: p.id,
+            problem_id: p.slug, // Store slug for routing
             problem_title: p.title,
             track_id: selectedLanguage,
             level: difficultyToLevel(p.difficulty),
