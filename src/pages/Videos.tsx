@@ -3,96 +3,57 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Play, BookOpen, ChevronRight, Video } from 'lucide-react';
+import { 
+  Play, 
+  Video, 
+  ChevronRight, 
+  ArrowLeft,
+  LayoutGrid,
+  Link,
+  Network,
+  Layers,
+  ListOrdered,
+  GitBranch,
+  ExternalLink
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { topicSections, getTotalVideoCount, type TopicSection, type VideoItem } from '@/lib/videoData';
 
-interface VideoItem {
-  id: string;
-  title: string;
-  youtubeId: string;
-  topic: string;
-}
+const iconMap: Record<string, React.ElementType> = {
+  'LayoutGrid': LayoutGrid,
+  'Link': Link,
+  'Network': Network,
+  'Layers': Layers,
+  'ListOrdered': ListOrdered,
+  'GitBranch': GitBranch,
+};
 
-// Videos organized by topic from YouTube playlists
-const videos: VideoItem[] = [
-  // Arrays - Playlist: PLqM7alHXFySEQDk2MDfbwEdjd2svVJH9p
-  { id: 'arr-1', title: 'WHAT IS ARRAY?', youtubeId: '3_x_Fb31NLE', topic: 'Arrays' },
-  { id: 'arr-2', title: 'ARRAY PRACTICE PROBLEMS', youtubeId: 'J7EhXvnixRM', topic: 'Arrays' },
-  { id: 'arr-3', title: 'Longest Span with same Sum', youtubeId: 'xtfj4-r_Ahs', topic: 'Arrays' },
-  { id: 'arr-4', title: 'Union and Intersection of two sorted arrays', youtubeId: 'EQQp4B_CU5Q', topic: 'Arrays' },
-  { id: 'arr-5', title: 'Find the minimum distance between two numbers', youtubeId: 'hoceGcqQczM', topic: 'Arrays' },
-  { id: 'arr-6', title: 'Leaders in an array', youtubeId: 'NyRZm1pzNmQ', topic: 'Arrays' },
-  { id: 'arr-7', title: 'Majority Element', youtubeId: 'uwogtyFiDLg', topic: 'Arrays' },
-  { id: 'arr-8', title: 'Find the Number Occurring Odd Number of Times', youtubeId: 'hySR1exD5PE', topic: 'Arrays' },
-  { id: 'arr-9', title: 'Replace every element with the greatest element on right side', youtubeId: 'bLb8e83OK7o', topic: 'Arrays' },
-  { id: 'arr-10', title: 'Find a Fixed Point in a given array', youtubeId: 'hASRzBXY5kY', topic: 'Arrays' },
-
-  // Linked Lists - Playlist: PLqM7alHXFySH41ZxzrPNj2pAYPOI8ITe7
-  { id: 'll-1', title: 'WHAT IS LINKED LIST?', youtubeId: 'MCG7S2fGUeU', topic: 'Linked Lists' },
-  { id: 'll-2', title: 'Linked List Set 1 (Introduction)', youtubeId: 'ge8iG7JecR4', topic: 'Linked Lists' },
-  { id: 'll-3', title: 'Linked List Set 2 (Inserting a node)', youtubeId: 'zgCROSijBRw', topic: 'Linked Lists' },
-  { id: 'll-4', title: 'Linked List Set 3 (Deleting a node)', youtubeId: 'DoNRZTumxB0', topic: 'Linked Lists' },
-  { id: 'll-5', title: 'Linked List vs Array', youtubeId: 'QRpbNTKH6XY', topic: 'Linked Lists' },
-  { id: 'll-6', title: 'Delete a Linked List node at a given position', youtubeId: 'BrjLWNuJ3HA', topic: 'Linked Lists' },
-  { id: 'll-7', title: 'Flattening a Linked List', youtubeId: 'PSKZJDtitZw', topic: 'Linked Lists' },
-  { id: 'll-8', title: 'Detection of Loop in a Linked List', youtubeId: 'Aup0kOWoMVg', topic: 'Linked Lists' },
-
-  // Graphs - Playlist: PLqM7alHXFySEaZgcg7uRYJFBnYMLti-nh
-  { id: 'gr-1', title: 'GRAPH Data Structure', youtubeId: 'gTsoyORhqkg', topic: 'Graphs' },
-  { id: 'gr-2', title: 'Graph Practice Problems', youtubeId: 'pCmsQVHYXK0', topic: 'Graphs' },
-  { id: 'gr-3', title: 'Graph and its representations', youtubeId: '1n5XPFcvxds', topic: 'Graphs' },
-  { id: 'gr-4', title: 'Breadth First Traversal for a Graph', youtubeId: '0u78hx-66Xk', topic: 'Graphs' },
-  { id: 'gr-5', title: 'Applications of Breadth First Traversal', youtubeId: '-CzEI2r5OTs', topic: 'Graphs' },
-  { id: 'gr-6', title: 'Depth First Traversal for a Graph', youtubeId: 'Y40bRyPQQr0', topic: 'Graphs' },
-  { id: 'gr-7', title: 'Applications of Depth First Search', youtubeId: 'dE3wBxYobrU', topic: 'Graphs' },
-  { id: 'gr-8', title: 'Length of shortest chain to reach a target word', youtubeId: '6pIC20wCm20', topic: 'Graphs' },
-
-  // Stacks - Playlist: PLqM7alHXFySF7Lap-wi5qlaD8OEBx9RMV
-  { id: 'st-1', title: 'WHAT IS STACK?', youtubeId: 'lhhyE7NVcbg', topic: 'Stacks' },
-  { id: 'st-2', title: 'Stack Practice Question (Parenthesis Checker)', youtubeId: '2ay2GCrmf9E', topic: 'Stacks' },
-  { id: 'st-3', title: 'Stack Set 1 (Introduction)', youtubeId: 'vZEuSFXSMDI', topic: 'Stacks' },
-  { id: 'st-4', title: 'Stack Set 2 (Infix to Postfix)', youtubeId: 'ysDharaQXkw', topic: 'Stacks' },
-  { id: 'st-5', title: 'Stack Set 3 (Reverse a string)', youtubeId: 'jBY4JD25Iks', topic: 'Stacks' },
-  { id: 'st-6', title: 'Stack Set 4 (Evaluation of Postfix)', youtubeId: '_TGyjXjg04w', topic: 'Stacks' },
-  { id: 'st-7', title: 'Next Greater Element', youtubeId: 'sgelJuvX1bU', topic: 'Stacks' },
-
-  // Queues - Playlist: PLqM7alHXFySG6wgjVeEat_ouTIi0IBQ6D
-  { id: 'qu-1', title: 'WHAT IS QUEUE?', youtubeId: 'ypJwoz_SXTo', topic: 'Queues' },
-  { id: 'qu-2', title: 'QUEUE PRACTICE PROBLEMS', youtubeId: 'KG4dbF5xRig', topic: 'Queues' },
-  { id: 'qu-3', title: 'Queue Set 1 (Array Implementation)', youtubeId: 'q5oOYxfOD1c', topic: 'Queues' },
-  { id: 'qu-4', title: 'Queue Set 2 (Linked List Implementation)', youtubeId: 'C6KjYbAarYI', topic: 'Queues' },
-  { id: 'qu-5', title: 'Implement a Stack using Single Queue', youtubeId: 'hC1UplBFEj0', topic: 'Queues' },
-  { id: 'qu-6', title: 'Circular Queue', youtubeId: 'eKxWdc1DVFE', topic: 'Queues' },
-  { id: 'qu-7', title: 'Reversing a Queue', youtubeId: 'aUU23JDaErs', topic: 'Queues' },
-
-  // Trees - Playlist: PLqM7alHXFySHCXD7r1J0ky9Zg_GBB1dbk
-  { id: 'tr-1', title: 'Tree Traversals', youtubeId: 'IpyCqRmaKW4', topic: 'Trees' },
-  { id: 'tr-2', title: 'AVL Tree - Insertion', youtubeId: 'ygZMI2YIcvk', topic: 'Trees' },
-  { id: 'tr-3', title: 'Inorder Tree Traversal without Recursion', youtubeId: 'VsxLHGUqAKs', topic: 'Trees' },
-  { id: 'tr-4', title: 'Level Order Tree Traversal', youtubeId: 'kQ-aoKbGKSo', topic: 'Trees' },
-  { id: 'tr-5', title: 'Red Black Tree (Insertion)', youtubeId: 'YCo2-H2CL6Q', topic: 'Trees' },
-  { id: 'tr-6', title: 'Find the Maximum Depth or Height of a Tree', youtubeId: 'TQI_m32_AeU', topic: 'Trees' },
-  { id: 'tr-7', title: 'Lowest Common Ancestor in a BST', youtubeId: 'zlTsz-apm4U', topic: 'Trees' },
-];
-
-const topicColors: Record<string, string> = {
-  'Arrays': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  'Linked Lists': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  'Graphs': 'bg-purple-500/10 text-purple-500 border-purple-500/20',
-  'Stacks': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  'Queues': 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-  'Trees': 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+  'blue': { bg: 'bg-blue-500/10', text: 'text-blue-500', border: 'border-blue-500/20' },
+  'emerald': { bg: 'bg-emerald-500/10', text: 'text-emerald-500', border: 'border-emerald-500/20' },
+  'purple': { bg: 'bg-purple-500/10', text: 'text-purple-500', border: 'border-purple-500/20' },
+  'amber': { bg: 'bg-amber-500/10', text: 'text-amber-500', border: 'border-amber-500/20' },
+  'rose': { bg: 'bg-rose-500/10', text: 'text-rose-500', border: 'border-rose-500/20' },
+  'cyan': { bg: 'bg-cyan-500/10', text: 'text-cyan-500', border: 'border-cyan-500/20' },
 };
 
 export default function Videos() {
+  const [selectedSection, setSelectedSection] = useState<TopicSection | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
-  const [filter, setFilter] = useState<string>('all');
 
-  const topics = ['all', ...new Set(videos.map(v => v.topic))];
-  
-  const filteredVideos = filter === 'all' 
-    ? videos 
-    : videos.filter(v => v.topic === filter);
+  const handleSectionClick = (section: TopicSection) => {
+    setSelectedSection(section);
+    setSelectedVideo(null);
+  };
+
+  const handleBackToSections = () => {
+    setSelectedSection(null);
+    setSelectedVideo(null);
+  };
+
+  const handleVideoClick = (video: VideoItem) => {
+    setSelectedVideo(video);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -106,108 +67,178 @@ export default function Videos() {
               <Video className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-3xl font-bold">Video Tutorials</h1>
+            <Badge variant="secondary" className="ml-2">
+              {getTotalVideoCount()} Videos
+            </Badge>
           </div>
           <p className="text-muted-foreground">
-            Learn data structures and algorithms through curated video tutorials. Watch directly here without leaving the platform.
+            Learn data structures and algorithms through curated video tutorials from GeeksforGeeks.
           </p>
         </div>
 
-        {/* Topic Filter */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {topics.map(topic => (
-            <Button
-              key={topic}
-              variant={filter === topic ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilter(topic)}
-              className="capitalize"
-            >
-              {topic}
-            </Button>
-          ))}
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Video Player Section */}
-          <div className="lg:col-span-2">
-            {selectedVideo ? (
-              <div className="space-y-4">
-                <div className="aspect-video rounded-xl overflow-hidden bg-card border border-border shadow-lg">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?rel=0&modestbranding=1`}
-                    title={selectedVideo.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Badge variant="outline" className={topicColors[selectedVideo.topic] || 'bg-primary/10 text-primary'}>
-                    {selectedVideo.topic}
-                  </Badge>
-                  <h2 className="text-2xl font-semibold">{selectedVideo.title}</h2>
-                </div>
-              </div>
-            ) : (
-              <Card className="aspect-video flex items-center justify-center bg-card/50 border-dashed">
-                <div className="text-center space-y-4">
-                  <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Play className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium">Select a video to start learning</h3>
-                    <p className="text-muted-foreground text-sm">
-                      Choose from the playlist on the right
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            )}
-          </div>
-
-          {/* Video List */}
-          <div className="space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Playlist ({filteredVideos.length} videos)
-            </h3>
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-              {filteredVideos.map((video, index) => (
+        {!selectedSection ? (
+          // Topic Sections Grid
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {topicSections.map((section) => {
+              const IconComponent = iconMap[section.icon];
+              const colors = colorMap[section.color];
+              
+              return (
                 <Card
-                  key={video.id}
+                  key={section.id}
                   className={cn(
-                    'cursor-pointer transition-all hover:border-primary/50 hover:bg-accent/50',
-                    selectedVideo?.id === video.id && 'border-primary bg-accent'
+                    'cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg',
+                    'border-2 hover:border-primary/50 group'
                   )}
-                  onClick={() => setSelectedVideo(video)}
+                  onClick={() => handleSectionClick(section)}
                 >
-                  <CardHeader className="p-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground font-mono w-5">
-                        {index + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-sm font-medium leading-tight truncate">
-                          {video.title}
-                        </CardTitle>
-                        <Badge 
-                          variant="outline" 
-                          className={cn('text-[10px] px-1.5 mt-1', topicColors[video.topic])}
-                        >
-                          {video.topic}
-                        </Badge>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className={cn('p-3 rounded-xl', colors.bg)}>
+                        <IconComponent className={cn('h-8 w-8', colors.text)} />
                       </div>
-                      <ChevronRight className={cn(
-                        'h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform',
-                        selectedVideo?.id === video.id && 'text-primary rotate-90'
-                      )} />
+                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
                   </CardHeader>
+                  <CardContent>
+                    <CardTitle className="text-xl mb-2">{section.name}</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className={cn(colors.bg, colors.text, colors.border)}>
+                        {section.videos.length} videos
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground hover:text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`https://youtube.com/playlist?list=${section.playlistId}`, '_blank');
+                        }}
+                      >
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        YouTube
+                      </Button>
+                    </div>
+                  </CardContent>
                 </Card>
-              ))}
+              );
+            })}
+          </div>
+        ) : (
+          // Selected Section View
+          <div>
+            {/* Back Button & Section Header */}
+            <div className="flex items-center gap-4 mb-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBackToSections}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                All Topics
+              </Button>
+              <div className="flex items-center gap-3">
+                {(() => {
+                  const IconComponent = iconMap[selectedSection.icon];
+                  const colors = colorMap[selectedSection.color];
+                  return (
+                    <>
+                      <div className={cn('p-2 rounded-lg', colors.bg)}>
+                        <IconComponent className={cn('h-5 w-5', colors.text)} />
+                      </div>
+                      <h2 className="text-2xl font-bold">{selectedSection.name}</h2>
+                      <Badge variant="outline" className={cn(colors.bg, colors.text, colors.border)}>
+                        {selectedSection.videos.length} videos
+                      </Badge>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* Video Player */}
+              <div className="lg:col-span-2">
+                {selectedVideo ? (
+                  <div className="space-y-4">
+                    <div className="aspect-video rounded-xl overflow-hidden bg-card border border-border shadow-lg">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?rel=0&modestbranding=1`}
+                        title={selectedVideo.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold">{selectedVideo.title}</h3>
+                    </div>
+                  </div>
+                ) : (
+                  <Card className="aspect-video flex items-center justify-center bg-card/50 border-dashed">
+                    <div className="text-center space-y-4">
+                      <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Play className="h-8 w-8 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-medium">Select a video to start learning</h3>
+                        <p className="text-muted-foreground text-sm">
+                          Choose from the playlist on the right
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+
+              {/* Video List */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">
+                  Videos ({selectedSection.videos.length})
+                </h3>
+                <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
+                  {selectedSection.videos.map((video, index) => {
+                    const colors = colorMap[selectedSection.color];
+                    return (
+                      <Card
+                        key={video.id}
+                        className={cn(
+                          'cursor-pointer transition-all hover:border-primary/50 hover:bg-accent/50',
+                          selectedVideo?.id === video.id && 'border-primary bg-accent'
+                        )}
+                        onClick={() => handleVideoClick(video)}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium flex-shrink-0',
+                              selectedVideo?.id === video.id 
+                                ? 'bg-primary text-primary-foreground' 
+                                : cn(colors.bg, colors.text)
+                            )}>
+                              {selectedVideo?.id === video.id ? (
+                                <Play className="h-4 w-4" />
+                              ) : (
+                                index + 1
+                              )}
+                            </div>
+                            <span className={cn(
+                              'text-sm font-medium leading-tight line-clamp-2',
+                              selectedVideo?.id === video.id && 'text-primary'
+                            )}>
+                              {video.title}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
