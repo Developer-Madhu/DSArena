@@ -22,7 +22,7 @@ import { getLocalLivesData, loseLife, hasLives, hasLivesAsync, fetchLivesData, f
 import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { GlitchyAssistant } from '@/components/editor/GlitchyAssistant';
 import { LanguageSelector } from '@/components/editor/LanguageSelector';
-import { StoryGenerator } from '@/components/problems/StoryGenerator';
+
 import { CodeAnalysisPanel } from '@/components/problems/CodeAnalysisPanel';
 import { startProblemSession, endProblemSession, handleVisibilityChange, getCurrentSessionDuration, formatDuration } from '@/lib/timeTracking';
 import { checkBonusEligibility, recordFastSolve, resetFastSolveStreak, getBonusCode } from '@/lib/bonusCodeSystem';
@@ -77,9 +77,17 @@ export default function ProblemDetail() {
   const problemIndex = allProblemsData.findIndex(p => p.slug === slug);
   
   // Check if this is a DSA problem (allows language selection) or a track problem (fixed language)
+  // Track problems have an explicit language field OR category containing "track"
   const isDSAProblem = useMemo(() => {
     if (!problem) return false;
+    // If problem has explicit language field, it's a track problem
+    if (problem.language) return false;
     const category = problem.category.toLowerCase();
+    // Check for track in category OR language-specific categories
+    const pythonCategories = ['python core', 'data structures', 'functions', 'oop', 'file handling', 'algorithms'];
+    if (pythonCategories.some(c => category.includes(c.toLowerCase()) && problem.id.startsWith('python-'))) {
+      return false;
+    }
     return !category.includes('track');
   }, [problem]);
 
@@ -90,18 +98,25 @@ export default function ProblemDetail() {
     // Use explicit language field if available
     if (problem.language) return problem.language;
     
+    // Check if it's a Python track problem by ID prefix
+    if (problem.id.startsWith('python-')) return 'python';
+    if (problem.id.startsWith('js-') || problem.id.startsWith('javascript-')) return 'javascript';
+    if (problem.id.startsWith('java-')) return 'java';
+    if (problem.id.startsWith('cpp-') || problem.id.startsWith('c++-')) return 'cpp';
+    
     // Fallback to category-based detection
     const category = problem.category.toLowerCase();
-    if (category === 'javascript track') return 'javascript';
-    if (category === 'java track') return 'java';
-    if (category === 'c++ track') return 'cpp';
-    if (category === 'go track') return 'go';
-    if (category === 'rust track') return 'rust';
-    if (category === 'c# track') return 'csharp';
-    if (category === 'ruby track') return 'ruby';
-    if (category === 'swift track') return 'swift';
-    if (category === 'kotlin track') return 'kotlin';
-    if (category === 'python track') return 'python';
+    if (category.includes('javascript')) return 'javascript';
+    if (category.includes('java') && !category.includes('javascript')) return 'java';
+    if (category.includes('c++') || category.includes('cpp')) return 'cpp';
+    if (category.includes('go')) return 'go';
+    if (category.includes('rust')) return 'rust';
+    if (category.includes('c#') || category.includes('csharp')) return 'csharp';
+    if (category.includes('ruby')) return 'ruby';
+    if (category.includes('swift')) return 'swift';
+    if (category.includes('kotlin')) return 'kotlin';
+    if (category.includes('python')) return 'python';
+    
     return 'python'; // Default for DSA problems
   }, [problem]);
 
@@ -814,22 +829,7 @@ class Program {
               <ScrollArea className="flex-1">
                 <div className="space-y-6 p-4">
                   {/* Problem Description */}
-                  <StoryGenerator 
-                    problem={{
-                      id: problem.id,
-                      title: problem.title,
-                      description: problem.description,
-                      difficulty: problem.difficulty,
-                      category: problem.category,
-                      language: editorLanguage
-                    }}
-                    onStoryGenerated={(story) => {
-                      console.log('Story generated:', story);
-                    }}
-                  />
-
-                  {/* Technical Details */}
-                  <div className="mt-6">
+                  <div>
                     <h3 className="mb-2 font-semibold">Technical Details</h3>
                     <div className="prose prose-invert max-w-none text-sm text-foreground">
                       <p className="whitespace-pre-wrap text-muted-foreground">{problem.description}</p>
