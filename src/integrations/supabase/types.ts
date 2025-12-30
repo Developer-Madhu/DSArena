@@ -82,6 +82,7 @@ export type Database = {
           code: string
           id: string
           problem_id: string
+          problem_slug: string | null
           updated_at: string | null
           user_id: string
         }
@@ -89,6 +90,7 @@ export type Database = {
           code: string
           id?: string
           problem_id: string
+          problem_slug?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -96,18 +98,11 @@ export type Database = {
           code?: string
           id?: string
           problem_id?: string
+          problem_slug?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "drafts_problem_id_fkey"
-            columns: ["problem_id"]
-            isOneToOne: false
-            referencedRelation: "problems"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       leaderboard_achievements: {
         Row: {
@@ -132,6 +127,54 @@ export type Database = {
           tag_icon?: string
           tag_name?: string
           tag_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      learning_plan: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          display_order: number | null
+          failed_attempts: number | null
+          id: string
+          is_completed: boolean | null
+          level: string
+          problem_id: string
+          problem_title: string
+          topic: string | null
+          track_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          failed_attempts?: number | null
+          id?: string
+          is_completed?: boolean | null
+          level: string
+          problem_id: string
+          problem_title: string
+          topic?: string | null
+          track_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          failed_attempts?: number | null
+          id?: string
+          is_completed?: boolean | null
+          level?: string
+          problem_id?: string
+          problem_title?: string
+          topic?: string | null
+          track_id?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -575,6 +618,39 @@ export type Database = {
           session_end?: string | null
           session_start?: string
           total_duration_seconds?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          coding_familiarity: number
+          created_at: string | null
+          id: string
+          onboarding_completed: boolean | null
+          preferred_language: string
+          recommended_level: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          coding_familiarity: number
+          created_at?: string | null
+          id?: string
+          onboarding_completed?: boolean | null
+          preferred_language: string
+          recommended_level?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          coding_familiarity?: number
+          created_at?: string | null
+          id?: string
+          onboarding_completed?: boolean | null
+          preferred_language?: string
+          recommended_level?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
