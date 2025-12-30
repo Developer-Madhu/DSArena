@@ -11,6 +11,7 @@ import { fetchSolvedProblems } from '@/lib/progressStorage';
 import { getTimeStats, formatDuration, TimeStats } from '@/lib/timeTracking';
 import { Leaderboard } from '@/components/leaderboard/Leaderboard';
 import { SkillProfile } from '@/components/arena/SkillProfile';
+import { RecommendationsPanel } from '@/components/dashboard/RecommendationsPanel';
 import {
   Trophy,
   Target,
@@ -305,12 +306,15 @@ export default function Dashboard() {
         </div>
 
         {/* Skill Profile & Leaderboard Row */}
-        <div className="mb-6 sm:mb-8 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="mb-6 sm:mb-8 grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Skill Profile */}
           <SkillProfile />
 
           {/* Leaderboard */}
           <Leaderboard />
+          
+          {/* AI Recommendations */}
+          <RecommendationsPanel />
         </div>
 
         {/* Daily Challenge Section */}

@@ -23,8 +23,12 @@ import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { GlitchyAssistant } from '@/components/editor/GlitchyAssistant';
 import { LanguageSelector } from '@/components/editor/LanguageSelector';
 import { StoryGenerator } from '@/components/problems/StoryGenerator';
+import { CodeAnalysisPopup } from '@/components/problems/CodeAnalysisPopup';
 import { startProblemSession, endProblemSession, handleVisibilityChange, getCurrentSessionDuration, formatDuration } from '@/lib/timeTracking';
 import { checkBonusEligibility, recordFastSolve, resetFastSolveStreak, getBonusCode } from '@/lib/bonusCodeSystem';
+import { useMotivationToast } from '@/hooks/useMotivationToast';
+import { useVideoRecommendations } from '@/hooks/useVideoRecommendations';
+import { learningRecommender } from '@/lib/learningRecommender';
 
 interface TestCase {
   id: string;
@@ -60,7 +64,13 @@ export default function ProblemDetail() {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [bonusApplied, setBonusApplied] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [showAnalysis, setShowAnalysis] = useState(false);
   const sessionStartedRef = useRef(false);
+  
+  // Hooks for intelligent systems
+  const { showMotivation } = useMotivationToast();
+  const { triggerVideoRecommendation, resetFailures } = useVideoRecommendations();
 
   // Find problem from local data (includes Python track)
   const problem = allProblemsData.find(p => p.slug === slug);
@@ -549,6 +559,7 @@ class Program {
     setResults(null);
     setConsoleOutput('');
     setLastError(null); // Clear previous errors
+    setAttemptCount(prev => prev + 1);
 
     try {
       const testCasesToRun = submitAll 
@@ -584,6 +595,9 @@ class Program {
       const passedCount = data.results.filter((r: TestResult) => r.passed).length;
       const totalCount = data.results.length;
       const avgRuntime = data.results.reduce((sum: number, r: TestResult) => sum + (r.runtime_ms || 0), 0) / totalCount;
+      
+      // Detect topic for recommendations
+      const topic = learningRecommender.detectTopic(problem.category);
 
       if (submitAll) {
         if (passedCount === totalCount) {
@@ -591,8 +605,58 @@ class Program {
           triggerConfetti();
           await saveProgressHandler(Math.round(avgRuntime));
           toast.success(`🎉 Congratulations! All ${totalCount} test cases passed!`);
+          
+          // Trigger motivation messages
+          resetFailures(topic);
+          if (attemptCount > 3) {
+            showMotivation(user.id, { 
+              type: 'solve_after_failures', 
+              problemTitle: problem.title,
+              attemptCount: attemptCount,
+              topic
+            });
+          } else if (currentTime < 300) { // Under 5 minutes
+            showMotivation(user.id, {
+              type: 'fast_solve',
+              problemTitle: problem.title,
+              solveTime: currentTime,
+              topic
+            });
+          } else {
+            showMotivation(user.id, {
+              type: 'first_solve',
+              problemTitle: problem.title,
+              topic,
+              difficulty: problem.difficulty
+            });
+          }
+          
+          // Record successful attempt for learning recommender
+          learningRecommender.recordAttempt(user.id, {
+            topic,
+            difficulty: problem.difficulty,
+            attempts: attemptCount,
+            solveTime: currentTime,
+            expectedTime: problem.difficulty === 'easy' ? 600 : problem.difficulty === 'medium' ? 1200 : 2400,
+            isSuccess: true,
+            language: editorLanguage
+          });
         } else {
           toast.error(`${passedCount}/${totalCount} test cases passed`);
+          
+          // Trigger video recommendations after repeated failures
+          triggerVideoRecommendation(topic);
+          
+          // Record failed attempt
+          learningRecommender.recordAttempt(user.id, {
+            topic,
+            difficulty: problem.difficulty,
+            attempts: attemptCount,
+            solveTime: currentTime,
+            expectedTime: problem.difficulty === 'easy' ? 600 : problem.difficulty === 'medium' ? 1200 : 2400,
+            isSuccess: false,
+            language: editorLanguage
+          });
         }
       } else {
         if (passedCount === totalCount) {
@@ -607,6 +671,12 @@ class Program {
       toast.error(message);
       setConsoleOutput(message);
       setLastError(message); // Set error for Glitchy to react
+      
+      // Track failure for video recommendations
+      if (problem) {
+        const topic = learningRecommender.detectTopic(problem.category);
+        triggerVideoRecommendation(topic);
+      }
     } finally {
       setRunning(false);
       setSubmitting(false);
@@ -873,14 +943,32 @@ class Program {
                       )}
                     </div>
                     {/* Glitchy AI Assistant - positioned in header */}
-                    {!alreadySolved && problem && (
-                      <GlitchyAssistant
-                        code={code}
-                        language={editorLanguage}
-                        problemDescription={problem.description}
-                        lastError={lastError}
-                      />
-                    )}
+                    <div className="flex items-center gap-2">
+                      {!alreadySolved && problem && (
+                        <>
+                          <CodeAnalysisPopup
+                            code={code}
+                            language={editorLanguage}
+                            problemSlug={problem.slug}
+                            problemTitle={problem.title}
+                            problemDifficulty={problem.difficulty}
+                            problemCategory={problem.category}
+                            attemptCount={attemptCount}
+                            onDismiss={() => setShowAnalysis(false)}
+                            onProceed={() => {
+                              setShowAnalysis(false);
+                              runCode(true);
+                            }}
+                          />
+                          <GlitchyAssistant
+                            code={code}
+                            language={editorLanguage}
+                            problemDescription={problem.description}
+                            lastError={lastError}
+                          />
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Editor Content */}
