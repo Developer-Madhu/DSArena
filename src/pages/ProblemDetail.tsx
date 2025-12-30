@@ -23,7 +23,7 @@ import { LivesDisplay } from '@/components/lives/LivesDisplay';
 import { GlitchyAssistant } from '@/components/editor/GlitchyAssistant';
 import { LanguageSelector } from '@/components/editor/LanguageSelector';
 import { StoryGenerator } from '@/components/problems/StoryGenerator';
-import { CodeAnalysisPopup } from '@/components/problems/CodeAnalysisPopup';
+import { CodeAnalysisPanel } from '@/components/problems/CodeAnalysisPanel';
 import { startProblemSession, endProblemSession, handleVisibilityChange, getCurrentSessionDuration, formatDuration } from '@/lib/timeTracking';
 import { checkBonusEligibility, recordFastSolve, resetFastSolveStreak, getBonusCode } from '@/lib/bonusCodeSystem';
 import { useMotivationToast } from '@/hooks/useMotivationToast';
@@ -65,7 +65,7 @@ export default function ProblemDetail() {
   const [bonusApplied, setBonusApplied] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [attemptCount, setAttemptCount] = useState(0);
-  const [showAnalysis, setShowAnalysis] = useState(false);
+  
   const sessionStartedRef = useRef(false);
   
   // Hooks for intelligent systems
@@ -906,6 +906,19 @@ class Program {
                       ))}
                     </div>
                   </div>
+
+                  {/* Real-time Code Analysis Panel */}
+                  {!alreadySolved && (
+                    <CodeAnalysisPanel
+                      code={code}
+                      language={editorLanguage}
+                      problemSlug={problem.slug}
+                      problemTitle={problem.title}
+                      problemDifficulty={problem.difficulty}
+                      problemCategory={problem.category}
+                      attemptCount={attemptCount}
+                    />
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -1024,7 +1037,7 @@ class Program {
                           </Button>
                           <Button
                             variant="default"
-                            onClick={() => setShowAnalysis(true)}
+                            onClick={() => runCode(true)}
                             disabled={running || submitting}
                             className="bg-primary hover:bg-primary/90"
                           >
@@ -1058,24 +1071,6 @@ class Program {
         </ResizablePanelGroup>
       </div>
 
-      {/* Code Analysis Popup - triggered on Submit */}
-      {!alreadySolved && problem && (
-        <CodeAnalysisPopup
-          code={code}
-          language={editorLanguage}
-          problemSlug={problem.slug}
-          problemTitle={problem.title}
-          problemDifficulty={problem.difficulty}
-          problemCategory={problem.category}
-          attemptCount={attemptCount}
-          isVisible={showAnalysis}
-          onDismiss={() => setShowAnalysis(false)}
-          onProceed={() => {
-            setShowAnalysis(false);
-            runCode(true);
-          }}
-        />
-      )}
     </div>
   );
 }
