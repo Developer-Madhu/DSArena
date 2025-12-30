@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.glitchy-hint]
 verify_jwt = false
+
+[functions.analyze-code]
+verify_jwt = false
