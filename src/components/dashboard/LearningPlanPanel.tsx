@@ -207,12 +207,6 @@ export function LearningPlanPanel() {
           <span className="text-muted-foreground/50">•</span>
           <span>{completedCount}/{planItems.length} completed</span>
         </div>
-        
-        {/* Dynamic recommendations hint */}
-        <div className="flex items-center gap-2 text-xs text-primary mt-2 bg-primary/5 rounded-md px-2 py-1">
-          <TrendingUp className="h-3 w-3" />
-          <span>Plan updates based on your progress</span>
-        </div>
       </CardHeader>
       <CardContent>
         {/* Progress bar */}
@@ -223,19 +217,6 @@ export function LearningPlanPanel() {
           </div>
           <Progress value={progress} className="h-2" />
         </div>
-
-        {/* Struggling alert */}
-        {hasStruggles && (
-          <div className="mb-4 p-3 rounded-lg bg-warning/10 border border-warning/30">
-            <div className="flex items-center gap-2 text-warning text-sm font-medium">
-              <Target className="h-4 w-4" />
-              <span>Focus areas detected</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              We've noticed some challenges. Your plan now includes easier problems to build foundations.
-            </p>
-          </div>
-        )}
 
         {/* Problem list */}
         <div className="space-y-2 max-h-[280px] overflow-y-auto">

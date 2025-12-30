@@ -12,6 +12,7 @@ import { getTimeStats, formatDuration, TimeStats } from '@/lib/timeTracking';
 import { Leaderboard } from '@/components/leaderboard/Leaderboard';
 import { SkillProfile } from '@/components/arena/SkillProfile';
 import { LearningPlanPanel } from '@/components/dashboard/LearningPlanPanel';
+import { GlitchyCompanion } from '@/components/dashboard/GlitchyCompanion';
 import { useOnboardingCheck } from '@/hooks/useOnboardingCheck';
 import { syncLearningPlanWithSolved } from '@/lib/learningPlanService';
 import {
@@ -315,6 +316,11 @@ export default function Dashboard() {
               <Progress value={overallTracksProgress} className="mt-2 h-1.5 sm:h-2" />
             </CardContent>
           </Card>
+        </div>
+
+        {/* Glitchy Companion */}
+        <div className="mb-6 sm:mb-8">
+          <GlitchyCompanion />
         </div>
 
         {/* Skill Profile & Learning Plan Row */}
