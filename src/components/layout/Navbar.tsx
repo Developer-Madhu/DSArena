@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { MobileNav } from './MobileNav';
-import { Code2, LayoutDashboard, LogOut, Settings, User, Code, BookOpen, Calendar, Video } from 'lucide-react';
+import { Code2, LayoutDashboard, LogOut, Settings, User, Code, BookOpen, Calendar, Video, ClipboardCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +70,12 @@ export function Navbar() {
                 <Button variant="ghost" size="sm">
                   <Video className="mr-2 h-4 w-4" />
                   Videos
+                </Button>
+              </Link>
+              <Link to="/exam">
+                <Button variant="ghost" size="sm">
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  Exam
                 </Button>
               </Link>
               <Link to="/dashboard">
