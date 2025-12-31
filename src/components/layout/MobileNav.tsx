@@ -19,6 +19,7 @@ import {
   BookOpen,
   Home,
   Calendar,
+  ClipboardCheck,
 } from 'lucide-react';
 
 export function MobileNav() {
@@ -94,6 +95,14 @@ export function MobileNav() {
           >
             <Calendar className="mr-3 h-5 w-5" />
             Daily Challenge
+          </Button>
+          <Button
+            variant="ghost"
+            className="justify-start"
+            onClick={() => handleNavigate('/exam')}
+          >
+            <ClipboardCheck className="mr-3 h-5 w-5" />
+            Exam
           </Button>
 
           {user ? (
