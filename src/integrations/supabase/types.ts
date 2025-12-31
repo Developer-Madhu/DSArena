@@ -104,6 +104,231 @@ export type Database = {
         }
         Relationships: []
       }
+      exam_answers: {
+        Row: {
+          code: string
+          compilation_errors: number | null
+          created_at: string
+          error_messages: string[] | null
+          exam_session_id: string
+          id: string
+          is_correct: boolean | null
+          last_run_at: string | null
+          question_id: string
+          question_index: number
+          run_count: number | null
+          runtime_errors: number | null
+          submitted_at: string | null
+          tests_passed: number | null
+          tests_total: number | null
+          time_spent_seconds: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          code?: string
+          compilation_errors?: number | null
+          created_at?: string
+          error_messages?: string[] | null
+          exam_session_id: string
+          id?: string
+          is_correct?: boolean | null
+          last_run_at?: string | null
+          question_id: string
+          question_index: number
+          run_count?: number | null
+          runtime_errors?: number | null
+          submitted_at?: string | null
+          tests_passed?: number | null
+          tests_total?: number | null
+          time_spent_seconds?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          compilation_errors?: number | null
+          created_at?: string
+          error_messages?: string[] | null
+          exam_session_id?: string
+          id?: string
+          is_correct?: boolean | null
+          last_run_at?: string | null
+          question_id?: string
+          question_index?: number
+          run_count?: number | null
+          runtime_errors?: number | null
+          submitted_at?: string | null
+          tests_passed?: number | null
+          tests_total?: number | null
+          time_spent_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_answers_exam_session_id_fkey"
+            columns: ["exam_session_id"]
+            isOneToOne: false
+            referencedRelation: "exam_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_results: {
+        Row: {
+          ai_feedback: string | null
+          avg_time_per_question_seconds: number | null
+          created_at: string
+          detailed_analysis: string | null
+          exam_session_id: string
+          id: string
+          improvement_suggestions: string[] | null
+          max_score: number | null
+          questions_correct: number | null
+          questions_total: number | null
+          total_compilation_errors: number | null
+          total_runtime_errors: number | null
+          total_score: number | null
+          user_id: string
+          weak_concepts: string[] | null
+        }
+        Insert: {
+          ai_feedback?: string | null
+          avg_time_per_question_seconds?: number | null
+          created_at?: string
+          detailed_analysis?: string | null
+          exam_session_id: string
+          id?: string
+          improvement_suggestions?: string[] | null
+          max_score?: number | null
+          questions_correct?: number | null
+          questions_total?: number | null
+          total_compilation_errors?: number | null
+          total_runtime_errors?: number | null
+          total_score?: number | null
+          user_id: string
+          weak_concepts?: string[] | null
+        }
+        Update: {
+          ai_feedback?: string | null
+          avg_time_per_question_seconds?: number | null
+          created_at?: string
+          detailed_analysis?: string | null
+          exam_session_id?: string
+          id?: string
+          improvement_suggestions?: string[] | null
+          max_score?: number | null
+          questions_correct?: number | null
+          questions_total?: number | null
+          total_compilation_errors?: number | null
+          total_runtime_errors?: number | null
+          total_score?: number | null
+          user_id?: string
+          weak_concepts?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_results_exam_session_id_fkey"
+            columns: ["exam_session_id"]
+            isOneToOne: false
+            referencedRelation: "exam_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_sessions: {
+        Row: {
+          auto_submitted: boolean | null
+          completed_at: string | null
+          created_at: string
+          current_question_index: number | null
+          hearts_remaining: number
+          id: string
+          language: string
+          question_ids: string[]
+          started_at: string
+          status: Database["public"]["Enums"]["exam_status"]
+          time_limit_seconds: number
+          time_spent_seconds: number | null
+          total_violations: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_submitted?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          current_question_index?: number | null
+          hearts_remaining?: number
+          id?: string
+          language: string
+          question_ids: string[]
+          started_at?: string
+          status?: Database["public"]["Enums"]["exam_status"]
+          time_limit_seconds?: number
+          time_spent_seconds?: number | null
+          total_violations?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_submitted?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          current_question_index?: number | null
+          hearts_remaining?: number
+          id?: string
+          language?: string
+          question_ids?: string[]
+          started_at?: string
+          status?: Database["public"]["Enums"]["exam_status"]
+          time_limit_seconds?: number
+          time_spent_seconds?: number | null
+          total_violations?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      exam_violations: {
+        Row: {
+          exam_session_id: string
+          hearts_after: number
+          hearts_before: number
+          id: string
+          occurred_at: string
+          user_id: string
+          violation_type: string
+        }
+        Insert: {
+          exam_session_id: string
+          hearts_after: number
+          hearts_before: number
+          id?: string
+          occurred_at?: string
+          user_id: string
+          violation_type: string
+        }
+        Update: {
+          exam_session_id?: string
+          hearts_after?: number
+          hearts_before?: number
+          id?: string
+          occurred_at?: string
+          user_id?: string
+          violation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_violations_exam_session_id_fkey"
+            columns: ["exam_session_id"]
+            isOneToOne: false
+            referencedRelation: "exam_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leaderboard_achievements: {
         Row: {
           earned_at: string | null
@@ -739,6 +964,7 @@ export type Database = {
       arena_mode: "practice" | "interview"
       arena_result: "solved" | "failed" | "timeout" | "abandoned"
       difficulty_level: "easy" | "medium" | "hard"
+      exam_status: "in_progress" | "completed" | "abandoned" | "disqualified"
       skill_tier: "bronze" | "silver" | "gold" | "platinum" | "diamond"
       submission_status:
         | "pending"
@@ -880,6 +1106,7 @@ export const Constants = {
       arena_mode: ["practice", "interview"],
       arena_result: ["solved", "failed", "timeout", "abandoned"],
       difficulty_level: ["easy", "medium", "hard"],
+      exam_status: ["in_progress", "completed", "abandoned", "disqualified"],
       skill_tier: ["bronze", "silver", "gold", "platinum", "diamond"],
       submission_status: [
         "pending",
