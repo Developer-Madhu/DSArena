@@ -1,8 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { MobileNav } from './MobileNav';
-import { Code2, LayoutDashboard, LogOut, Settings, User, Code, BookOpen, Calendar, Video, ClipboardCheck } from 'lucide-react';
+import { Code2, LayoutDashboard, LogOut, Settings, User, Code, BookOpen, Calendar, Video, ClipboardCheck, Shield } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,10 +12,31 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
 
 export function Navbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      checkAdminRole();
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user]);
+
+  const checkAdminRole = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+    setIsAdmin(!!data);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -78,6 +100,14 @@ export function Navbar() {
                   Exam
                 </Button>
               </Link>
+              {isAdmin && (
+                <Link to="/exam-admin">
+                  <Button variant="ghost" size="sm" className="text-primary">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Admin
+                  </Button>
+                </Link>
+              )}
               <Link to="/dashboard">
                 <Button variant="ghost" size="sm">
                   <LayoutDashboard className="mr-2 h-4 w-4" />

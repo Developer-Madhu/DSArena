@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -20,12 +20,34 @@ import {
   Home,
   Calendar,
   ClipboardCheck,
+  Shield,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export function MobileNav() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      checkAdminRole();
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user]);
+
+  const checkAdminRole = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+    setIsAdmin(!!data);
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -108,6 +130,16 @@ export function MobileNav() {
           {user ? (
             <>
               <div className="my-4 border-t border-border" />
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  className="justify-start text-primary"
+                  onClick={() => handleNavigate('/exam-admin')}
+                >
+                  <Shield className="mr-3 h-5 w-5" />
+                  Admin Panel
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 className="justify-start"
