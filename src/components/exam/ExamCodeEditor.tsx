@@ -2,7 +2,7 @@ import { useRef, useCallback, useEffect, useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Play, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Play, Loader2, CheckCircle, XCircle, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { getMonacoLanguage, ExamLanguage } from '@/lib/examUtils';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,6 +22,7 @@ interface ExamCodeEditorProps {
   testCases: { input: string; expectedOutput: string }[];
   hiddenTestCases: { input: string; expectedOutput: string }[];
   onRunComplete: (results: TestResult[], allPassed: boolean, compilationErrors: number, runtimeErrors: number) => void;
+  onSave?: (code: string) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -32,10 +33,12 @@ export function ExamCodeEditor({
   testCases,
   hiddenTestCases,
   onRunComplete,
+  onSave,
   disabled = false,
 }: ExamCodeEditorProps) {
   const editorRef = useRef<any>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
   const [consoleOutput, setConsoleOutput] = useState('');
 
@@ -138,6 +141,20 @@ export function ExamCodeEditor({
     }
   }, [code, language, testCases, hiddenTestCases, onRunComplete, isRunning, disabled]);
 
+  const handleSave = useCallback(async () => {
+    if (isSaving || !onSave) return;
+    setIsSaving(true);
+    try {
+      await onSave(code);
+      toast.success('Code saved successfully!');
+    } catch (err) {
+      console.error('Save error:', err);
+      toast.error('Failed to save code');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [code, onSave, isSaving]);
+
   const passedCount = results.filter((r) => r.passed).length;
   const totalCount = results.length;
 
@@ -148,24 +165,47 @@ export function ExamCodeEditor({
         <span className="text-xs font-medium text-muted-foreground uppercase">
           {language} Editor
         </span>
-        <Button
-          size="sm"
-          onClick={runCode}
-          disabled={isRunning || disabled}
-          className="gap-2"
-        >
-          {isRunning ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Running...
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" />
-              Run Code
-            </>
+        <div className="flex items-center gap-2">
+          {onSave && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSave}
+              disabled={isSaving || disabled}
+              className="gap-2"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+          <Button
+            size="sm"
+            onClick={runCode}
+            disabled={isRunning || disabled}
+            className="gap-2"
+          >
+            {isRunning ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                Run Code
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Editor */}

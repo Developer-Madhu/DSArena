@@ -2,6 +2,7 @@ import { pythonProblemsData } from './pythonProblemsData';
 import { javascriptProblemsData } from './javascriptProblemsData';
 import { javaProblemsData } from './javaProblemsData';
 import { cppProblemsData } from './cppProblemsData';
+import { examQuestionsData } from './examQuestionsData';
 import { ProblemData } from './problemsData';
 
 export type ExamLanguage = 'python' | 'javascript' | 'java' | 'cpp';
@@ -21,11 +22,12 @@ export interface ExamQuestion {
   memoryLimitMb: number;
 }
 
-// Get problems by language
+// Get exam questions - uses rephrased questions for Python, original for others
 export function getProblemsByLanguage(language: ExamLanguage): ProblemData[] {
   switch (language) {
     case 'python':
-      return pythonProblemsData.filter(p => p.category === 'Python Core');
+      // Use rephrased exam questions for Python exams
+      return examQuestionsData;
     case 'javascript':
       return javascriptProblemsData;
     case 'java':
