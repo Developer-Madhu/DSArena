@@ -175,6 +175,53 @@ export type Database = {
           },
         ]
       }
+      exam_eligibility: {
+        Row: {
+          blocked_at: string | null
+          created_at: string | null
+          id: string
+          is_eligible: boolean | null
+          last_exam_passed: boolean | null
+          last_exam_session_id: string | null
+          unblocked_at: string | null
+          unblocked_by: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          blocked_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_eligible?: boolean | null
+          last_exam_passed?: boolean | null
+          last_exam_session_id?: string | null
+          unblocked_at?: string | null
+          unblocked_by?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          blocked_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_eligible?: boolean | null
+          last_exam_passed?: boolean | null
+          last_exam_session_id?: string | null
+          unblocked_at?: string | null
+          unblocked_by?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_eligibility_last_exam_session_id_fkey"
+            columns: ["last_exam_session_id"]
+            isOneToOne: false
+            referencedRelation: "exam_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_results: {
         Row: {
           ai_feedback: string | null
@@ -240,13 +287,17 @@ export type Database = {
       exam_sessions: {
         Row: {
           auto_submitted: boolean | null
+          can_retake: boolean | null
           completed_at: string | null
           created_at: string
           current_question_index: number | null
           hearts_remaining: number
           id: string
           language: string
+          passed: boolean | null
           question_ids: string[]
+          retake_approved_at: string | null
+          retake_approved_by: string | null
           started_at: string
           status: Database["public"]["Enums"]["exam_status"]
           time_limit_seconds: number
@@ -257,13 +308,17 @@ export type Database = {
         }
         Insert: {
           auto_submitted?: boolean | null
+          can_retake?: boolean | null
           completed_at?: string | null
           created_at?: string
           current_question_index?: number | null
           hearts_remaining?: number
           id?: string
           language: string
+          passed?: boolean | null
           question_ids: string[]
+          retake_approved_at?: string | null
+          retake_approved_by?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["exam_status"]
           time_limit_seconds?: number
@@ -274,13 +329,17 @@ export type Database = {
         }
         Update: {
           auto_submitted?: boolean | null
+          can_retake?: boolean | null
           completed_at?: string | null
           created_at?: string
           current_question_index?: number | null
           hearts_remaining?: number
           id?: string
           language?: string
+          passed?: boolean | null
           question_ids?: string[]
+          retake_approved_at?: string | null
+          retake_approved_by?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["exam_status"]
           time_limit_seconds?: number
