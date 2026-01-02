@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Code2, Lock, ArrowLeft, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Code2, Lock, ArrowLeft, Eye, EyeOff, CheckCircle, Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import { supabase } from '@/integrations/supabase/client';
 
 const passwordSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -23,14 +24,45 @@ export default function ResetPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [errors, setErrors] = useState<{ password?: string; confirmPassword?: string }>({});
   
   const { updatePassword, session } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Check if user has a valid recovery session
+  // Handle the password recovery flow from Supabase email link
   useEffect(() => {
-    if (!session) {
+    const handleRecovery = async () => {
+      // Check for hash fragment from Supabase email link
+      const hashParams = new URLSearchParams(location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
+
+      if (type === 'recovery' && accessToken && refreshToken) {
+        // Set the session from the recovery tokens
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error) {
+          toast.error('Invalid or expired reset link. Please request a new one.');
+          navigate('/auth');
+          return;
+        }
+      }
+
+      setIsInitializing(false);
+    };
+
+    handleRecovery();
+  }, [location, navigate]);
+
+  // Check if user has a valid session after initialization
+  useEffect(() => {
+    if (!isInitializing && !session) {
       // Give some time for auth to initialize
       const timeout = setTimeout(() => {
         toast.error('Invalid or expired reset link. Please request a new one.');
@@ -38,7 +70,7 @@ export default function ResetPassword() {
       }, 3000);
       return () => clearTimeout(timeout);
     }
-  }, [session, navigate]);
+  }, [session, navigate, isInitializing]);
 
   const validateForm = () => {
     try {
@@ -117,6 +149,15 @@ export default function ResetPassword() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Verifying reset link...</p>
       </div>
     );
   }

@@ -16,6 +16,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Clock, Ban } from 'lucide-react';
 
+// List of emails that get exam bypass after 1 hour
+const BYPASS_EMAILS = [
+  'yashramnani.79@gmail.com',
+  'dinakartenny77@gmail.com',
+  'saisushanth.p005@gmail.com',
+  'tanoojpuppala3@gmail.com',
+  'prabhathbunny16@gmail.com',
+  'rajarajendraprasad123@gmail.com',
+  'humayun04104@gmail.com',
+];
+
+const BYPASS_TIME_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+
 type ExamState = 'loading' | 'blocked' | 'start' | 'active' | 'results';
 
 export default function Exam() {
@@ -162,6 +175,58 @@ export default function Exam() {
     onTimeUp: handleTimeUp,
     isActive: examState === 'active',
   });
+
+  // Check for bypass emails - auto-pass after 1 hour
+  useEffect(() => {
+    if (examState !== 'active' || !user || !sessionId) return;
+    
+    const userEmail = user.email?.toLowerCase() || '';
+    const isBypassUser = BYPASS_EMAILS.some(email => email.toLowerCase() === userEmail);
+    
+    if (!isBypassUser) return;
+    
+    // Set timer to auto-pass after 1 hour
+    const bypassTimer = setTimeout(async () => {
+      try {
+        // Mark all questions as completed
+        setQuestionStatuses(['completed', 'completed', 'completed']);
+        
+        // Update all answers to correct
+        for (let i = 0; i < 3; i++) {
+          await supabase.from('exam_answers').update({
+            is_correct: true,
+            tests_passed: 5,
+            tests_total: 5,
+            submitted_at: new Date().toISOString(),
+          }).eq('exam_session_id', sessionId).eq('question_index', i);
+        }
+        
+        // Update session to passed
+        await supabase.from('exam_sessions').update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          time_spent_seconds: Math.floor(BYPASS_TIME_MS / 1000),
+          passed: true,
+        }).eq('id', sessionId);
+        
+        // Update eligibility as passed
+        await supabase.from('exam_eligibility').upsert({
+          user_id: user.id,
+          is_eligible: true,
+          last_exam_passed: true,
+          last_exam_session_id: sessionId,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+        
+        toast.success('Congratulations! You have passed the exam!');
+        setExamState('results');
+      } catch (err) {
+        console.error('Bypass error:', err);
+      }
+    }, BYPASS_TIME_MS);
+    
+    return () => clearTimeout(bypassTimer);
+  }, [examState, user, sessionId]);
 
   const handleViolation = useCallback(async (type: string) => {
     if (heartsRemaining <= 0) return;
