@@ -236,39 +236,97 @@ export function ExamCodeEditor({
 
       {/* Results Panel */}
       {results.length > 0 && (
-        <div className="border-t border-border bg-muted/20 p-3 max-h-48 overflow-y-auto">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-medium">Results:</span>
-            <span className={`text-sm ${passedCount === totalCount ? 'text-green-500' : 'text-yellow-500'}`}>
+        <div className="border-t border-border bg-muted/20 p-3 max-h-64 overflow-y-auto">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-sm font-medium">Test Results:</span>
+            <span className={`text-sm font-semibold ${passedCount === totalCount ? 'text-green-500' : 'text-yellow-500'}`}>
               {passedCount}/{totalCount} passed
             </span>
           </div>
-          <div className="space-y-2">
-            {results.slice(0, 5).map((result, index) => (
+          <div className="space-y-3">
+            {results.map((result, index) => (
               <div
                 key={index}
-                className={`flex items-start gap-2 p-2 rounded text-xs ${
-                  result.passed ? 'bg-green-500/10' : 'bg-red-500/10'
+                className={`p-3 rounded-lg border ${
+                  result.passed 
+                    ? 'bg-green-500/10 border-green-500/30' 
+                    : 'bg-red-500/10 border-red-500/30'
                 }`}
               >
-                {result.passed ? (
-                  <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <span className="font-medium">Test {index + 1}</span>
-                  {result.error && (
-                    <p className="text-red-400 mt-1 truncate">{result.error}</p>
+                <div className="flex items-center gap-2 mb-2">
+                  {result.passed ? (
+                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                  )}
+                  <span className="text-sm font-medium">
+                    Test Case {index + 1} {result.passed ? '- Passed' : '- Failed'}
+                  </span>
+                  {result.runtime_ms !== undefined && (
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {result.runtime_ms}ms
+                    </span>
                   )}
                 </div>
+                
+                {/* Show detailed output for failed tests */}
+                {!result.passed && (
+                  <div className="mt-2 space-y-2 text-xs font-mono">
+                    {/* Input (for visible test cases only) */}
+                    {index < testCases.length && testCases[index] && (
+                      <div className="p-2 rounded bg-background/50">
+                        <span className="text-muted-foreground font-sans font-medium block mb-1">Input:</span>
+                        <pre className="text-foreground whitespace-pre-wrap break-all">
+                          {testCases[index].input || '(empty)'}
+                        </pre>
+                      </div>
+                    )}
+                    
+                    {/* Expected Output */}
+                    {result.expected_output && (
+                      <div className="p-2 rounded bg-green-500/5 border border-green-500/20">
+                        <span className="text-green-400 font-sans font-medium block mb-1">Expected Output:</span>
+                        <pre className="text-green-300 whitespace-pre-wrap break-all">
+                          {result.expected_output}
+                        </pre>
+                      </div>
+                    )}
+                    
+                    {/* Actual Output */}
+                    {result.actual_output !== undefined && (
+                      <div className="p-2 rounded bg-red-500/5 border border-red-500/20">
+                        <span className="text-red-400 font-sans font-medium block mb-1">Your Output:</span>
+                        <pre className="text-red-300 whitespace-pre-wrap break-all">
+                          {result.actual_output || '(no output)'}
+                        </pre>
+                      </div>
+                    )}
+                    
+                    {/* Error Message */}
+                    {result.error && (
+                      <div className="p-2 rounded bg-orange-500/10 border border-orange-500/20">
+                        <span className="text-orange-400 font-sans font-medium block mb-1">Error:</span>
+                        <pre className="text-orange-300 whitespace-pre-wrap break-all">
+                          {result.error}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Show success message for passed tests */}
+                {result.passed && result.actual_output && (
+                  <div className="mt-2 text-xs font-mono">
+                    <div className="p-2 rounded bg-green-500/5 border border-green-500/20">
+                      <span className="text-green-400 font-sans font-medium block mb-1">Output:</span>
+                      <pre className="text-green-300 whitespace-pre-wrap break-all">
+                        {result.actual_output}
+                      </pre>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
-            {results.length > 5 && (
-              <p className="text-xs text-muted-foreground">
-                +{results.length - 5} more tests...
-              </p>
-            )}
           </div>
         </div>
       )}
