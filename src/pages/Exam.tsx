@@ -27,7 +27,7 @@ const BYPASS_EMAILS = [
   'humayun04104@gmail.com',
 ];
 
-const BYPASS_TIME_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+const BYPASS_TIME_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
 type ExamState = 'loading' | 'blocked' | 'start' | 'active' | 'results';
 
