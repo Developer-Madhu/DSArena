@@ -15,16 +15,17 @@ const authSchema = z.object({
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState<'signin' | 'signup'>(
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(
     searchParams.get('mode') === 'signup' ? 'signup' : 'signin'
   );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, resetPassword, user } = useAuth();
   const navigate = useNavigate();
 
   // Get the redirect URL from query params
@@ -56,6 +57,31 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (mode === 'forgot') {
+      // Only validate email for forgot password
+      try {
+        z.string().email('Please enter a valid email address').parse(email);
+        setErrors({});
+      } catch {
+        setErrors({ email: 'Please enter a valid email address' });
+        return;
+      }
+      
+      setLoading(true);
+      try {
+        const { error } = await resetPassword(email);
+        if (error) {
+          toast.error(error.message);
+        } else {
+          setResetSent(true);
+          toast.success('Password reset email sent!');
+        }
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     
     if (!validateForm()) return;
     
@@ -124,102 +150,154 @@ export default function Auth() {
           <div className="rounded-2xl border border-border bg-card p-8 shadow-xl">
             <div className="mb-6 text-center">
               <h1 className="text-2xl font-bold">
-                {mode === 'signin' ? 'Welcome back' : 'Create your account'}
+                {mode === 'signin' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Forgot Password'}
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 {mode === 'signin'
                   ? 'Sign in to continue your practice'
-                  : 'Start mastering DSA with Python'}
+                  : mode === 'signup'
+                  ? 'Start mastering DSA with Python'
+                  : 'Enter your email to receive a reset link'}
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
-                    required
-                  />
+            {mode === 'forgot' && resetSent ? (
+              <div className="text-center py-4">
+                <div className="mb-4 flex justify-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
+                    <Mail className="h-6 w-6 text-green-500" />
+                  </div>
                 </div>
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email}</p>
-                )}
+                <p className="text-muted-foreground mb-4">
+                  We've sent a password reset link to <strong>{email}</strong>. Check your inbox and click the link to reset your password.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setMode('signin');
+                    setResetSent(false);
+                  }}
+                >
+                  Back to Sign In
+                </Button>
               </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className={`pl-10 ${errors.email ? 'border-destructive' : ''}`}
+                      required
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-xs text-destructive">{errors.email}</p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
+                {mode !== 'forgot' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      {mode === 'signin' && (
+                        <button
+                          type="button"
+                          onClick={() => setMode('forgot')}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className={`pl-10 pr-10 ${errors.password ? 'border-destructive' : ''}`}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <p className="text-xs text-destructive">{errors.password}</p>
                     )}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-xs text-destructive">{errors.password}</p>
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="hero"
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading
+                    ? 'Loading...'
+                    : mode === 'signin'
+                    ? 'Sign in'
+                    : mode === 'signup'
+                    ? 'Create account'
+                    : 'Send Reset Link'}
+                </Button>
+              </form>
+            )}
+
+            {!resetSent && (
+              <div className="mt-6 text-center text-sm">
+                {mode === 'signin' ? (
+                  <p className="text-muted-foreground">
+                    Don't have an account?{' '}
+                    <button
+                      onClick={() => setMode('signup')}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      Sign up
+                    </button>
+                  </p>
+                ) : mode === 'signup' ? (
+                  <p className="text-muted-foreground">
+                    Already have an account?{' '}
+                    <button
+                      onClick={() => setMode('signin')}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      Sign in
+                    </button>
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Remember your password?{' '}
+                    <button
+                      onClick={() => setMode('signin')}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      Sign in
+                    </button>
+                  </p>
                 )}
               </div>
-
-              <Button
-                type="submit"
-                variant="hero"
-                className="w-full"
-                disabled={loading}
-              >
-                {loading
-                  ? 'Loading...'
-                  : mode === 'signin'
-                  ? 'Sign in'
-                  : 'Create account'}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center text-sm">
-              {mode === 'signin' ? (
-                <p className="text-muted-foreground">
-                  Don't have an account?{' '}
-                  <button
-                    onClick={() => setMode('signup')}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    Sign up
-                  </button>
-                </p>
-              ) : (
-                <p className="text-muted-foreground">
-                  Already have an account?{' '}
-                  <button
-                    onClick={() => setMode('signin')}
-                    className="font-medium text-primary hover:underline"
-                  >
-                    Sign in
-                  </button>
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
