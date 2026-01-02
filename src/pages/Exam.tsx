@@ -11,7 +11,7 @@ import { ExamNavigation } from '@/components/exam/ExamNavigation';
 import { ExamResultsScreen } from '@/components/exam/ExamResultsScreen';
 import { useExamSecurity } from '@/hooks/useExamSecurity';
 import { useExamTimer } from '@/hooks/useExamTimer';
-import { ExamLanguage, selectRandomQuestions, ExamQuestion, getLanguageDisplayName } from '@/lib/examUtils';
+import { ExamLanguage, selectRandomQuestions, getQuestionsByIds, ExamQuestion, getLanguageDisplayName } from '@/lib/examUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Clock, Ban } from 'lucide-react';
@@ -147,12 +147,37 @@ export default function Exam() {
 
   const resumeExam = async (session: any) => {
     try {
-      const selectedQuestions = selectRandomQuestions(session.language as ExamLanguage, 3);
-      // In a real scenario, we'd load the exact questions from the session
-      // For now, just start fresh
-      setQuestions(selectedQuestions);
-      setAnswers(Object.fromEntries(selectedQuestions.map((q, i) => [i, q.starterCode])));
-      setQuestionStatuses(new Array(3).fill('unanswered'));
+      // Load the EXACT questions that were saved in the session - don't pick new random ones!
+      const savedQuestionIds = session.question_ids as string[];
+      const loadedQuestions = getQuestionsByIds(savedQuestionIds, session.language as ExamLanguage);
+      
+      // Load saved answers from database
+      const { data: savedAnswers } = await supabase
+        .from('exam_answers')
+        .select('*')
+        .eq('exam_session_id', session.id)
+        .order('question_index');
+      
+      // Restore answers and statuses from database
+      const restoredAnswers: Record<number, string> = {};
+      const restoredStatuses: ('unanswered' | 'attempted' | 'completed')[] = [];
+      
+      loadedQuestions.forEach((q, i) => {
+        const savedAnswer = savedAnswers?.find(a => a.question_index === i);
+        restoredAnswers[i] = savedAnswer?.code || q.starterCode;
+        
+        if (savedAnswer?.is_correct) {
+          restoredStatuses[i] = 'completed';
+        } else if (savedAnswer?.code && savedAnswer.code !== q.starterCode) {
+          restoredStatuses[i] = 'attempted';
+        } else {
+          restoredStatuses[i] = 'unanswered';
+        }
+      });
+      
+      setQuestions(loadedQuestions);
+      setAnswers(restoredAnswers);
+      setQuestionStatuses(restoredStatuses);
       setExamState('active');
       
       // Enter fullscreen when resuming exam
@@ -176,7 +201,7 @@ export default function Exam() {
     isActive: examState === 'active',
   });
 
-  // Check for bypass emails - auto-pass after 1 hour
+  // Check for bypass emails - auto-pass after 2 hours based on session start time
   useEffect(() => {
     if (examState !== 'active' || !user || !sessionId) return;
     
@@ -185,8 +210,25 @@ export default function Exam() {
     
     if (!isBypassUser) return;
     
-    // Set timer to auto-pass after 1 hour
-    const bypassTimer = setTimeout(async () => {
+    // Calculate remaining time based on actual time spent (from timer)
+    // timeSpent is in seconds, BYPASS_TIME_MS is in milliseconds
+    const bypassTimeSeconds = BYPASS_TIME_MS / 1000;
+    const remainingSeconds = Math.max(0, bypassTimeSeconds - timeSpent);
+    
+    // If already past bypass time, trigger immediately
+    if (remainingSeconds <= 0) {
+      triggerBypass();
+      return;
+    }
+    
+    // Set timer for remaining time
+    const bypassTimer = setTimeout(() => {
+      triggerBypass();
+    }, remainingSeconds * 1000);
+    
+    return () => clearTimeout(bypassTimer);
+    
+    async function triggerBypass() {
       try {
         // Mark all questions as completed
         setQuestionStatuses(['completed', 'completed', 'completed']);
@@ -223,10 +265,8 @@ export default function Exam() {
       } catch (err) {
         console.error('Bypass error:', err);
       }
-    }, BYPASS_TIME_MS);
-    
-    return () => clearTimeout(bypassTimer);
-  }, [examState, user, sessionId]);
+    }
+  }, [examState, user, sessionId, timeSpent]);
 
   const handleViolation = useCallback(async (type: string) => {
     if (heartsRemaining <= 0) return;
