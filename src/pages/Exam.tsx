@@ -228,11 +228,51 @@ export default function Exam() {
     }
   }, [sessionId, user, timeSpent]);
 
+  // Handle abandon - when user exits fullscreen and doesn't return
+  const handleAbandon = useCallback(async () => {
+    setWasDisqualified(true);
+    setIsSubmitting(true);
+    
+    try {
+      if (sessionId && user) {
+        // Update session to abandoned
+        await supabase.from('exam_sessions').update({
+          status: 'abandoned',
+          completed_at: new Date().toISOString(),
+          time_spent_seconds: timeSpent,
+          auto_submitted: true,
+          passed: false,
+        }).eq('id', sessionId);
+
+        // Block user from retaking
+        const { error: blockErr } = await supabase.from('exam_eligibility').upsert({
+          user_id: user.id,
+          is_eligible: false,
+          last_exam_passed: false,
+          last_exam_session_id: sessionId,
+          blocked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
+        if (blockErr) throw blockErr;
+      }
+
+      exitFullscreenRef.current();
+      setExamState('results');
+    } catch (err) {
+      console.error('Abandon error:', err);
+      toast.error('Failed to end exam');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [sessionId, user, timeSpent]);
+
   const { enterFullscreen, exitFullscreen } = useExamSecurity({
     isActive: examState === 'active',
     heartsRemaining,
     onViolation: handleViolation,
     onDisqualify: handleDisqualify,
+    onAbandon: handleAbandon,
   });
 
   // Update ref when exitFullscreen changes

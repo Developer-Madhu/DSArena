@@ -6,6 +6,7 @@ interface UseExamSecurityProps {
   heartsRemaining: number;
   onViolation: (type: string) => void;
   onDisqualify: () => void;
+  onAbandon?: () => void; // Called when user exits fullscreen and doesn't return
 }
 
 export function useExamSecurity({
@@ -13,6 +14,7 @@ export function useExamSecurity({
   heartsRemaining,
   onViolation,
   onDisqualify,
+  onAbandon,
 }: UseExamSecurityProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const violationCountRef = useRef(0);
@@ -47,8 +49,13 @@ export function useExamSecurity({
     setIsFullscreen(false);
   }, []);
 
+  // Track fullscreen exit attempts - if user exits and doesn't re-enter, abandon exam
+  const fullscreenExitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fullscreenExitCountRef = useRef(0);
+
   // Handle fullscreen change
-  // Aggressive fullscreen enforcement - re-enter within 100ms
+  // If user exits fullscreen (e.g., by pressing Escape), give them 3 seconds to re-enter
+  // If they don't re-enter after 2 consecutive exits, abandon the exam
   useEffect(() => {
     if (!isActive) return;
 
@@ -57,16 +64,60 @@ export function useExamSecurity({
       setIsFullscreen(isNowFullscreen);
       
       if (!isNowFullscreen && isActive && heartsRemaining > 0) {
+        fullscreenExitCountRef.current += 1;
+        const exitCount = fullscreenExitCountRef.current;
+        
         onViolation('fullscreen_exit');
+        
+        // If this is the second consecutive exit, abandon immediately
+        if (exitCount >= 2) {
+          toast.error('🚫 Exam abandoned due to repeated fullscreen exits!', {
+            description: 'Your exam has been terminated and you are blocked from retaking.',
+            duration: 5000,
+          });
+          if (onAbandon) {
+            onAbandon();
+          } else {
+            onDisqualify();
+          }
+          return;
+        }
+        
         toast.error('⚠️ Warning: Fullscreen exited!', {
-          description: `You lost a heart. ${heartsRemaining - 1} hearts remaining.`,
+          description: `You lost a heart. ${heartsRemaining - 1} hearts remaining. Return to fullscreen or your exam will be terminated.`,
           duration: 3000,
         });
         
-        // Immediately try to re-enter fullscreen (100ms delay for browser to allow)
+        // Clear any existing timeout
+        if (fullscreenExitTimeoutRef.current) {
+          clearTimeout(fullscreenExitTimeoutRef.current);
+        }
+        
+        // Set timeout - if user doesn't re-enter fullscreen within 3 seconds, abandon exam
+        fullscreenExitTimeoutRef.current = setTimeout(() => {
+          if (!document.fullscreenElement && isActive) {
+            toast.error('🚫 Exam abandoned!', {
+              description: 'You did not return to fullscreen mode. Your exam has been terminated.',
+              duration: 5000,
+            });
+            if (onAbandon) {
+              onAbandon();
+            } else {
+              onDisqualify();
+            }
+          }
+        }, 3000);
+        
+        // Also try to re-enter fullscreen immediately
         setTimeout(() => {
           enterFullscreen();
         }, 100);
+      } else if (isNowFullscreen) {
+        // User re-entered fullscreen, clear the abandon timeout but keep exit count
+        if (fullscreenExitTimeoutRef.current) {
+          clearTimeout(fullscreenExitTimeoutRef.current);
+          fullscreenExitTimeoutRef.current = null;
+        }
       }
     };
 
@@ -76,8 +127,11 @@ export function useExamSecurity({
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      if (fullscreenExitTimeoutRef.current) {
+        clearTimeout(fullscreenExitTimeoutRef.current);
+      }
     };
-  }, [isActive, heartsRemaining, onViolation, enterFullscreen]);
+  }, [isActive, heartsRemaining, onViolation, onDisqualify, onAbandon, enterFullscreen]);
 
   // Continuously check and enforce fullscreen while exam is active
   useEffect(() => {
