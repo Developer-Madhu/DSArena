@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, XCircle, Clock, Users, Trophy, AlertTriangle, Unlock, RefreshCw, RotateCcw, UserCheck, Ban } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Users, Trophy, AlertTriangle, Unlock, RefreshCw, RotateCcw, UserCheck, Ban, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatExamTime } from '@/lib/examUtils';
 
@@ -64,6 +64,7 @@ export default function ExamAdmin() {
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, inProgress: 0, totalUsers: 0 });
   const [isApprovingAll, setIsApprovingAll] = useState(false);
+  const [isDeletingEntries, setIsDeletingEntries] = useState(false);
 
   useEffect(() => {
     checkAdminAndLoad();
@@ -281,6 +282,69 @@ export default function ExamAdmin() {
       toast.error('Failed to approve all users');
     } finally {
       setIsApprovingAll(false);
+    }
+  };
+
+  // Delete all completed/failed/disqualified exam entries
+  const deleteCompletedEntries = async () => {
+    const deletableSessions = sessions.filter(s => {
+      const result = getExamResult(s);
+      return result !== 'in_progress';
+    });
+
+    if (deletableSessions.length === 0) {
+      toast.info('No completed entries to delete');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${deletableSessions.length} completed exam entries? This action cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeletingEntries(true);
+    try {
+      const sessionIds = deletableSessions.map(s => s.id);
+      
+      // Delete exam answers first (foreign key constraint)
+      await supabase
+        .from('exam_answers')
+        .delete()
+        .in('exam_session_id', sessionIds);
+
+      // Delete exam results
+      await supabase
+        .from('exam_results')
+        .delete()
+        .in('exam_session_id', sessionIds);
+
+      // Delete exam violations
+      await supabase
+        .from('exam_violations')
+        .delete()
+        .in('exam_session_id', sessionIds);
+
+      // Delete exam sessions
+      const { error } = await supabase
+        .from('exam_sessions')
+        .delete()
+        .in('id', sessionIds);
+
+      if (error) throw error;
+
+      // Also delete eligibility records for deleted users who are blocked
+      const userIds = [...new Set(deletableSessions.map(s => s.user_id))];
+      await supabase
+        .from('exam_eligibility')
+        .delete()
+        .in('user_id', userIds);
+
+      toast.success(`Deleted ${deletableSessions.length} exam entries`);
+      await loadData();
+    } catch (err) {
+      console.error('Error deleting entries:', err);
+      toast.error('Failed to delete entries');
+    } finally {
+      setIsDeletingEntries(false);
     }
   };
 
@@ -555,6 +619,23 @@ export default function ExamAdmin() {
                 <>
                   <UserCheck className="h-4 w-4 mr-2" />
                   Approve All Users ({blockedUsers.length})
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={deleteCompletedEntries} 
+              disabled={isDeletingEntries || sessions.filter(s => getExamResult(s) !== 'in_progress').length === 0}
+            >
+              {isDeletingEntries ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Entries ({sessions.filter(s => getExamResult(s) !== 'in_progress').length})
                 </>
               )}
             </Button>

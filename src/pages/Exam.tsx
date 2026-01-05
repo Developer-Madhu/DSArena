@@ -48,6 +48,7 @@ export default function Exam() {
   const [wasAutoSubmitted, setWasAutoSubmitted] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [blockReason, setBlockReason] = useState<string>('');
+  const [isRevoked, setIsRevoked] = useState(false);
 
   // Check eligibility when component mounts
   useEffect(() => {
@@ -57,6 +58,54 @@ export default function Exam() {
       setExamState('start');
     }
   }, [user]);
+
+  // Real-time subscription for exam revocation detection
+  useEffect(() => {
+    if (!user || !sessionId || examState !== 'active') return;
+
+    const channel = supabase
+      .channel(`exam-revocation-${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'exam_sessions',
+          filter: `id=eq.${sessionId}`
+        },
+        (payload) => {
+          const updatedSession = payload.new as any;
+          // Check if session was revoked/disqualified by admin
+          if (updatedSession.status === 'disqualified' && updatedSession.passed === false) {
+            setIsRevoked(true);
+            setBlockReason('You are not eligible to take exam');
+            exitFullscreenRef.current();
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'exam_eligibility',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          const eligibility = payload.new as any;
+          if (eligibility && eligibility.is_eligible === false) {
+            setIsRevoked(true);
+            setBlockReason('You are not eligible to take exam');
+            exitFullscreenRef.current();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, sessionId, examState]);
 
   const checkEligibility = async () => {
     if (!user) return;
@@ -559,6 +608,28 @@ export default function Exam() {
                 An administrator will review your previous attempt and may grant you permission to retake the exam.
               </p>
             </div>
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              Return to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show revocation popup overlay when admin revokes during active exam
+  if (isRevoked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <Ban className="h-8 w-8 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl text-destructive">Exam Revoked</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">{blockReason}</p>
             <Button variant="outline" onClick={() => navigate('/dashboard')}>
               Return to Dashboard
             </Button>
