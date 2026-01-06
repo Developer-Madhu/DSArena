@@ -34,7 +34,7 @@ type ExamState = 'loading' | 'blocked' | 'start' | 'active' | 'results';
 export default function Exam() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const [examState, setExamState] = useState<ExamState>('loading');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [language, setLanguage] = useState<ExamLanguage>('python');
@@ -109,7 +109,7 @@ export default function Exam() {
 
   const checkEligibility = async () => {
     if (!user) return;
-    
+
     try {
       // Check if user has failed an exam and is blocked via exam_eligibility
       const { data: eligibility } = await supabase
@@ -164,7 +164,7 @@ export default function Exam() {
             passed: false,
             completed_at: new Date().toISOString(),
           }).eq('id', activeSession.id);
-          
+
           await supabase.from('exam_eligibility').upsert({
             user_id: user.id,
             is_eligible: false,
@@ -172,7 +172,7 @@ export default function Exam() {
             last_exam_session_id: activeSession.id,
             blocked_at: new Date().toISOString(),
           }, { onConflict: 'user_id' });
-          
+
           setBlockReason('You were disqualified from the previous exam. Please wait for admin approval to retake.');
           setExamState('blocked');
           return;
@@ -199,22 +199,22 @@ export default function Exam() {
       // Load the EXACT questions that were saved in the session - don't pick new random ones!
       const savedQuestionIds = session.question_ids as string[];
       const loadedQuestions = getQuestionsByIds(savedQuestionIds, session.language as ExamLanguage);
-      
+
       // Load saved answers from database
       const { data: savedAnswers } = await supabase
         .from('exam_answers')
         .select('*')
         .eq('exam_session_id', session.id)
         .order('question_index');
-      
+
       // Restore answers and statuses from database
       const restoredAnswers: Record<number, string> = {};
       const restoredStatuses: ('unanswered' | 'attempted' | 'completed')[] = [];
-      
+
       loadedQuestions.forEach((q, i) => {
         const savedAnswer = savedAnswers?.find(a => a.question_index === i);
         restoredAnswers[i] = savedAnswer?.code || q.starterCode;
-        
+
         if (savedAnswer?.is_correct) {
           restoredStatuses[i] = 'completed';
         } else if (savedAnswer?.code && savedAnswer.code !== q.starterCode) {
@@ -223,12 +223,12 @@ export default function Exam() {
           restoredStatuses[i] = 'unanswered';
         }
       });
-      
+
       setQuestions(loadedQuestions);
       setAnswers(restoredAnswers);
       setQuestionStatuses(restoredStatuses);
       setExamState('active');
-      
+
       // Enter fullscreen when resuming exam
       setTimeout(() => {
         enterFullscreen();
@@ -253,35 +253,35 @@ export default function Exam() {
   // Check for bypass emails - auto-pass after 2 hours based on session start time
   useEffect(() => {
     if (examState !== 'active' || !user || !sessionId) return;
-    
+
     const userEmail = user.email?.toLowerCase() || '';
     const isBypassUser = BYPASS_EMAILS.some(email => email.toLowerCase() === userEmail);
-    
+
     if (!isBypassUser) return;
-    
+
     // Calculate remaining time based on actual time spent (from timer)
     // timeSpent is in seconds, BYPASS_TIME_MS is in milliseconds
     const bypassTimeSeconds = BYPASS_TIME_MS / 1000;
     const remainingSeconds = Math.max(0, bypassTimeSeconds - timeSpent);
-    
+
     // If already past bypass time, trigger immediately
     if (remainingSeconds <= 0) {
       triggerBypass();
       return;
     }
-    
+
     // Set timer for remaining time
     const bypassTimer = setTimeout(() => {
       triggerBypass();
     }, remainingSeconds * 1000);
-    
+
     return () => clearTimeout(bypassTimer);
-    
+
     async function triggerBypass() {
       try {
         // Mark all questions as completed
         setQuestionStatuses(['completed', 'completed', 'completed']);
-        
+
         // Update all answers to correct
         for (let i = 0; i < 3; i++) {
           await supabase.from('exam_answers').update({
@@ -291,7 +291,7 @@ export default function Exam() {
             submitted_at: new Date().toISOString(),
           }).eq('exam_session_id', sessionId).eq('question_index', i);
         }
-        
+
         // Update session to passed
         await supabase.from('exam_sessions').update({
           status: 'completed',
@@ -299,7 +299,7 @@ export default function Exam() {
           time_spent_seconds: Math.floor(BYPASS_TIME_MS / 1000),
           passed: true,
         }).eq('id', sessionId);
-        
+
         // Update eligibility as passed
         await supabase.from('exam_eligibility').upsert({
           user_id: user.id,
@@ -308,7 +308,7 @@ export default function Exam() {
           last_exam_session_id: sessionId,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
-        
+
         toast.success('Congratulations! You have passed the exam!');
         setExamState('results');
       } catch (err) {
@@ -319,7 +319,7 @@ export default function Exam() {
 
   const handleViolation = useCallback(async (type: string) => {
     if (heartsRemaining <= 0) return;
-    
+
     const newHearts = heartsRemaining - 1;
     setHeartsRemaining(newHearts);
 
@@ -341,13 +341,13 @@ export default function Exam() {
   }, [heartsRemaining, sessionId, user]);
 
   // Reference to exitFullscreen to avoid circular dependency
-  const exitFullscreenRef = useRef<() => void>(() => {});
+  const exitFullscreenRef = useRef<() => void>(() => { });
 
   // Handle disqualification - mark exam as failed due to violations
   const handleDisqualify = useCallback(async () => {
     setWasDisqualified(true);
     setIsSubmitting(true);
-    
+
     try {
       if (sessionId && user) {
         // Update session to disqualified
@@ -386,7 +386,7 @@ export default function Exam() {
   const handleAbandon = useCallback(async () => {
     setWasDisqualified(true);
     setIsSubmitting(true);
-    
+
     try {
       if (sessionId && user) {
         // Update session to abandoned
@@ -426,7 +426,7 @@ export default function Exam() {
     handleSubmit(true);
   }, []);
 
-  const { enterFullscreen, exitFullscreen } = useExamSecurity({
+  const { enterFullscreen, exitFullscreen, warning } = useExamSecurity({
     isActive: examState === 'active',
     heartsRemaining,
     onViolation: handleViolation,
@@ -440,6 +440,20 @@ export default function Exam() {
     exitFullscreenRef.current = exitFullscreen;
   }, [exitFullscreen]);
 
+  // Listen for 'F' key to re-enter fullscreen during warning
+  useEffect(() => {
+    if (!warning.isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        enterFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [warning.isOpen, enterFullscreen]);
+
   const handleStart = async (selectedLanguage: ExamLanguage) => {
     if (!user) {
       toast.error('Please log in to start the exam');
@@ -450,7 +464,7 @@ export default function Exam() {
     setIsStarting(true);
     try {
       const selectedQuestions = selectRandomQuestions(selectedLanguage, 3);
-      
+
       // Create exam session
       const { data: session, error } = await supabase.from('exam_sessions').insert({
         user_id: user.id,
@@ -490,7 +504,7 @@ export default function Exam() {
 
   const handleCodeChange = (code: string) => {
     setAnswers(prev => ({ ...prev, [currentIndex]: code }));
-    
+
     if (questionStatuses[currentIndex] === 'unanswered') {
       const newStatuses = [...questionStatuses];
       newStatuses[currentIndex] = 'attempted';
@@ -500,7 +514,7 @@ export default function Exam() {
 
   const handleSaveCode = async (code: string) => {
     if (!sessionId || !user) return;
-    
+
     await supabase.from('exam_answers').update({
       code: code,
     }).eq('exam_session_id', sessionId).eq('question_index', currentIndex);
@@ -704,6 +718,58 @@ export default function Exam() {
         isSubmitting={isSubmitting}
         questionStatuses={questionStatuses}
       />
+
+      {/* Warning Overlay */}
+      {warning.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <Card className="w-full max-w-md border-orange-500 bg-background shadow-lg animate-in fade-in zoom-in duration-300">
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center mb-2">
+                <AlertTriangle className="h-6 w-6 text-orange-500" />
+              </div>
+              <CardTitle className="text-xl text-orange-500">Warning: Exam Focus Lost!</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="font-medium text-foreground">
+                {warning.message}
+              </p>
+              <div className="bg-orange-500/10 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground mb-1">Life lost in</p>
+                <CountdownTimer endTime={warning.endTime || 0} />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Press <span className="font-bold border border-foreground/20 rounded px-1.5 py-0.5 mx-1">F</span> to return to fullscreen immediately.
+              </p>
+              <Button onClick={() => enterFullscreen()} variant="outline" className="w-full mt-2">
+                Return to Fullscreen (or press F)
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Simple countdown component
+function CountdownTimer({ endTime }: { endTime: number }) {
+  const [timeLeft, setTimeLeft] = useState(Math.max(0, Math.ceil((endTime - Date.now()) / 1000)));
+
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) clearInterval(interval);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [endTime]);
+
+  return (
+    <span className="text-3xl font-bold font-mono text-orange-500">
+      {timeLeft}s
+    </span>
   );
 }

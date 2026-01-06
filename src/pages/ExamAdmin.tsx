@@ -41,17 +41,17 @@ const getExamResult = (session: ExamSession): 'passed' | 'failed' | 'in_progress
   if (session.status === 'revoked') return 'revoked';
   if (session.passed === true) return 'passed';
   if (session.passed === false) return 'failed';
-  
+
   // If status is still in_progress but hearts are 0, it's effectively disqualified
   if (session.status === 'in_progress' && session.hearts_remaining === 0) {
     return 'disqualified';
   }
-  
+
   // If status is completed but passed is null, treat as failed
   if (session.status === 'completed' && session.passed === null) {
     return 'failed';
   }
-  
+
   return 'in_progress';
 };
 
@@ -65,6 +65,7 @@ export default function ExamAdmin() {
   const [stats, setStats] = useState({ total: 0, passed: 0, failed: 0, inProgress: 0, totalUsers: 0 });
   const [isApprovingAll, setIsApprovingAll] = useState(false);
   const [isDeletingEntries, setIsDeletingEntries] = useState(false);
+  const [isRetakingAll, setIsRetakingAll] = useState(false);
 
   useEffect(() => {
     checkAdminAndLoad();
@@ -160,7 +161,7 @@ export default function ExamAdmin() {
       if (sessionsData && sessionsData.length > 0) {
         // Get unique user IDs
         const userIds = [...new Set(sessionsData.map(s => s.user_id))];
-        
+
         // Fetch profiles for these users
         const { data: profilesData } = await supabase
           .from('profiles')
@@ -178,7 +179,7 @@ export default function ExamAdmin() {
         }));
 
         setSessions(sessionsWithProfiles);
-        
+
         // Calculate stats from ALL data using counts
         const passedCount = sessionsWithProfiles.filter(s => getExamResult(s) === 'passed').length;
         const failedCount = sessionsWithProfiles.filter(s => {
@@ -186,11 +187,11 @@ export default function ExamAdmin() {
           return result === 'failed' || result === 'disqualified' || result === 'revoked';
         }).length;
         const inProgressCount = sessionsWithProfiles.filter(s => getExamResult(s) === 'in_progress').length;
-        
-        setStats({ 
-          total: totalSessionsCount || sessionsData.length, 
-          passed: passedCount, 
-          failed: failedCount, 
+
+        setStats({
+          total: totalSessionsCount || sessionsData.length,
+          passed: passedCount,
+          failed: failedCount,
           inProgress: inProgressCount,
           totalUsers: totalUsersCount || userIds.length
         });
@@ -211,7 +212,7 @@ export default function ExamAdmin() {
 
       if (blockedData && blockedData.length > 0) {
         const blockedUserIds = [...new Set(blockedData.map(b => b.user_id))];
-        
+
         const { data: blockedProfilesData } = await supabase
           .from('profiles')
           .select('id, display_name, username')
@@ -285,6 +286,46 @@ export default function ExamAdmin() {
     }
   };
 
+  // Allow ALL users (including those who passed) to retake the exam
+  const retakeAll = async () => {
+    const uniqueUserIds = [...new Set(sessions.map(s => s.user_id))];
+
+    if (uniqueUserIds.length === 0) {
+      toast.info('No users found to enable retake');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to allow ALL ${uniqueUserIds.length} users to retake the exam? This includes users who have already passed.`)) {
+      return;
+    }
+
+    setIsRetakingAll(true);
+    try {
+      // Prepare bulk upsert data
+      const eligibilityUpdates = uniqueUserIds.map(userId => ({
+        user_id: userId,
+        is_eligible: true,
+        unblocked_by: user?.id,
+        unblocked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error } = await supabase
+        .from('exam_eligibility')
+        .upsert(eligibilityUpdates, { onConflict: 'user_id' });
+
+      if (error) throw error;
+
+      toast.success(`Enabled retake for ${uniqueUserIds.length} users`);
+      await loadData();
+    } catch (err) {
+      console.error('Error enabling retake for all:', err);
+      toast.error('Failed to enable retake for all users');
+    } finally {
+      setIsRetakingAll(false);
+    }
+  };
+
   // Delete all completed/failed/disqualified exam entries
   const deleteCompletedEntries = async () => {
     const deletableSessions = sessions.filter(s => {
@@ -304,7 +345,7 @@ export default function ExamAdmin() {
     setIsDeletingEntries(true);
     try {
       const sessionIds = deletableSessions.map(s => s.id);
-      
+
       // Delete exam answers first (foreign key constraint)
       await supabase
         .from('exam_answers')
@@ -503,10 +544,10 @@ export default function ExamAdmin() {
     }
     return (
       <Badge variant={
-        session.status === 'completed' ? 'default' : 
-        session.status === 'disqualified' ? 'destructive' : 
-        session.status === 'revoked' ? 'destructive' :
-        'secondary'
+        session.status === 'completed' ? 'default' :
+          session.status === 'disqualified' ? 'destructive' :
+            session.status === 'revoked' ? 'destructive' :
+              'secondary'
       }>
         {session.status}
       </Badge>
@@ -606,8 +647,8 @@ export default function ExamAdmin() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex gap-4">
-            <Button 
-              onClick={approveAllUsers} 
+            <Button
+              onClick={approveAllUsers}
               disabled={isApprovingAll || blockedUsers.length === 0}
             >
               {isApprovingAll ? (
@@ -622,9 +663,27 @@ export default function ExamAdmin() {
                 </>
               )}
             </Button>
-            <Button 
+            <Button
+              variant="default" // Primary style to distinguish
+              onClick={retakeAll}
+              disabled={isRetakingAll || sessions.length === 0}
+              className="ml-2"
+            >
+              {isRetakingAll ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Retake All ({[...new Set(sessions.map(s => s.user_id))].length})
+                </>
+              )}
+            </Button>
+            <Button
               variant="destructive"
-              onClick={deleteCompletedEntries} 
+              onClick={deleteCompletedEntries}
               disabled={isDeletingEntries || sessions.filter(s => getExamResult(s) !== 'in_progress').length === 0}
             >
               {isDeletingEntries ? (
@@ -684,7 +743,7 @@ export default function ExamAdmin() {
                         const result = getExamResult(session);
                         const isStale = session.status === 'in_progress' && result === 'disqualified';
                         const isInProgress = result === 'in_progress';
-                        
+
                         return (
                           <TableRow key={session.id}>
                             <TableCell className="font-medium">
@@ -704,8 +763,8 @@ export default function ExamAdmin() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 {isStale && (
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     variant="outline"
                                     onClick={() => fixStaleSession(session.id, session.user_id)}
                                   >
@@ -713,8 +772,8 @@ export default function ExamAdmin() {
                                   </Button>
                                 )}
                                 {isInProgress && (
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     variant="destructive"
                                     onClick={() => revokeExam(session.id, session.user_id)}
                                   >
@@ -723,8 +782,8 @@ export default function ExamAdmin() {
                                   </Button>
                                 )}
                                 {(result === 'failed' || result === 'disqualified' || result === 'revoked') && (
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     variant="secondary"
                                     onClick={() => approveRetakeFromSession(session.user_id)}
                                   >
@@ -780,8 +839,8 @@ export default function ExamAdmin() {
                             {new Date(session.created_at).toLocaleString()}
                           </TableCell>
                           <TableCell>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="destructive"
                               onClick={() => revokeExam(session.id, session.user_id)}
                             >
@@ -826,7 +885,7 @@ export default function ExamAdmin() {
                       {failedSessions.map((session) => {
                         const result = getExamResult(session);
                         const isStale = session.status === 'in_progress' && result === 'disqualified';
-                        
+
                         return (
                           <TableRow key={session.id}>
                             <TableCell className="font-medium">
@@ -842,15 +901,15 @@ export default function ExamAdmin() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 {isStale && (
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     variant="outline"
                                     onClick={() => fixStaleSession(session.id, session.user_id)}
                                   >
                                     Fix Status
                                   </Button>
                                 )}
-                                <Button 
+                                <Button
                                   size="sm"
                                   onClick={() => approveRetakeFromSession(session.user_id)}
                                 >

@@ -29,10 +29,15 @@ export function useExamSecurity({
     heartsRef.current = heartsRemaining;
   }, [heartsRemaining]);
 
-  // Grace period tracking for tab switches and blur events
+  // Grace period tracking
   const focusLossTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isFocusLostRef = useRef(false);
   const pendingViolationTypeRef = useRef<string | null>(null);
+  const [warning, setWarning] = useState<{ isOpen: boolean; message: string; endTime: number | null }>({
+    isOpen: false,
+    message: '',
+    endTime: null,
+  });
 
   // Clear the grace period timer
   const clearGracePeriodTimer = useCallback(() => {
@@ -42,48 +47,8 @@ export function useExamSecurity({
     }
     isFocusLostRef.current = false;
     pendingViolationTypeRef.current = null;
+    setWarning({ isOpen: false, message: '', endTime: null });
   }, []);
-
-  // Handle focus loss with grace period - uses ref for current hearts value
-  const handleFocusLossWithGrace = useCallback((violationType: string) => {
-    // If already tracking a focus loss, don't restart the timer
-    if (isFocusLostRef.current) return;
-    
-    // Mark focus as lost and store the violation type
-    isFocusLostRef.current = true;
-    pendingViolationTypeRef.current = violationType;
-
-    // Start grace period timer
-    focusLossTimerRef.current = setTimeout(() => {
-      // Get current hearts from ref to avoid stale closure
-      const currentHearts = heartsRef.current;
-      
-      // Only trigger violation if still in focus-lost state and exam is active
-      if (isFocusLostRef.current && currentHearts > 0) {
-        onViolation(violationType);
-        
-        // Check if this causes lives to reach 0 (after deduction)
-        const newHearts = currentHearts - 1;
-        if (newHearts <= 0 && onAutoSubmit) {
-          // Delay slightly to allow violation to process
-          setTimeout(() => {
-            onAutoSubmit();
-          }, 100);
-        }
-      }
-      // Reset tracking state
-      isFocusLostRef.current = false;
-      pendingViolationTypeRef.current = null;
-      focusLossTimerRef.current = null;
-    }, GRACE_PERIOD_MS);
-  }, [onViolation, onAutoSubmit]);
-
-  // Handle focus return (cancel pending violation)
-  const handleFocusReturn = useCallback(() => {
-    if (isFocusLostRef.current) {
-      clearGracePeriodTimer();
-    }
-  }, [clearGracePeriodTimer]);
 
   // Request fullscreen
   const enterFullscreen = useCallback(async () => {
@@ -115,73 +80,81 @@ export function useExamSecurity({
     setIsFullscreen(false);
   }, []);
 
-  // Track fullscreen exit attempts
-  const fullscreenExitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const fullscreenExitCountRef = useRef(0);
+  // Handle violation with grace period
+  const triggerGracePeriod = useCallback((violationType: string, message: string) => {
+    // If already tracking a violation, don't restart (unless it's a different critical type, but keep simple)
+    if (isFocusLostRef.current) return;
 
-  // Handle fullscreen change (no grace period - immediate for security)
+    isFocusLostRef.current = true;
+    pendingViolationTypeRef.current = violationType;
+
+    // Show warning immediately
+    setWarning({
+      isOpen: true,
+      message: message,
+      endTime: Date.now() + GRACE_PERIOD_MS
+    });
+
+    // Start grace period timer
+    focusLossTimerRef.current = setTimeout(() => {
+      const currentHearts = heartsRef.current;
+
+      // If timer executes, it means user didn't return in time
+      if (isFocusLostRef.current && currentHearts > 0) {
+        onViolation(violationType);
+
+        // Attempt to re-enter fullscreen automatically after penalty
+        // We use a small timeout to allow state updates to settle and hope browser grants permission
+        setTimeout(() => {
+          console.log('Attempting auto-fullscreen recovery after violation penalty...');
+          enterFullscreen().then(success => {
+            if (success) {
+              console.log('Auto-fullscreen recovery successful');
+            } else {
+              console.warn('Auto-fullscreen recovery blocked by browser or failed');
+            }
+          }).catch(err => console.error('Auto-fullscreen error:', err));
+        }, 100);
+
+        // Check if this causes lives to reach 0
+        const newHearts = currentHearts - 1;
+        if (newHearts <= 0 && onAutoSubmit) {
+          setTimeout(() => {
+            onAutoSubmit();
+          }, 100);
+        }
+      }
+      clearGracePeriodTimer();
+    }, GRACE_PERIOD_MS);
+  }, [onViolation, onAutoSubmit, clearGracePeriodTimer, enterFullscreen]);
+
+  // Handle return to safe state
+  const handleSafeStateReturn = useCallback(() => {
+    // Only clear if we are currently in a "lost" state and the environment is actually safe
+    // Safe means: Fullscreen IS active AND Document IS visible/focused
+    const isSafe = !!document.fullscreenElement && !document.hidden;
+
+    if (isFocusLostRef.current && isSafe) {
+      clearGracePeriodTimer();
+    }
+  }, [clearGracePeriodTimer]);
+
+
+
+  // Handle fullscreen change
   useEffect(() => {
     if (!isActive) return;
 
     const handleFullscreenChange = () => {
       const isNowFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isNowFullscreen);
-      
-      if (!isNowFullscreen && isActive && heartsRemaining > 0) {
-        fullscreenExitCountRef.current += 1;
-        const exitCount = fullscreenExitCountRef.current;
-        
-        onViolation('fullscreen_exit');
-        
-        // If this is the second consecutive exit, abandon immediately
-        if (exitCount >= 2) {
-          toast.error('🚫 Exam abandoned due to repeated fullscreen exits!', {
-            description: 'Your exam has been terminated and you are blocked from retaking.',
-            duration: 5000,
-          });
-          if (onAbandon) {
-            onAbandon();
-          } else {
-            onDisqualify();
-          }
-          return;
-        }
-        
-        toast.error('⚠️ Warning: Fullscreen exited!', {
-          description: `You lost a heart. ${heartsRemaining - 1} hearts remaining. Return to fullscreen or your exam will be terminated.`,
-          duration: 3000,
-        });
-        
-        // Clear any existing timeout
-        if (fullscreenExitTimeoutRef.current) {
-          clearTimeout(fullscreenExitTimeoutRef.current);
-        }
-        
-        // Set timeout - if user doesn't re-enter fullscreen within 3 seconds, abandon exam
-        fullscreenExitTimeoutRef.current = setTimeout(() => {
-          if (!document.fullscreenElement && isActive) {
-            toast.error('🚫 Exam abandoned!', {
-              description: 'You did not return to fullscreen mode. Your exam has been terminated.',
-              duration: 5000,
-            });
-            if (onAbandon) {
-              onAbandon();
-            } else {
-              onDisqualify();
-            }
-          }
-        }, 3000);
-        
-        // Also try to re-enter fullscreen immediately
-        setTimeout(() => {
-          enterFullscreen();
-        }, 100);
+
+      if (!isNowFullscreen && isActive && heartsRef.current > 0) {
+        // Fullscreen exited - trigger grace period
+        triggerGracePeriod('fullscreen_exit', 'Please return to fullscreen within 10 seconds or a life will be eliminated.');
       } else if (isNowFullscreen) {
-        // User re-entered fullscreen, clear the abandon timeout but keep exit count
-        if (fullscreenExitTimeoutRef.current) {
-          clearTimeout(fullscreenExitTimeoutRef.current);
-          fullscreenExitTimeoutRef.current = null;
-        }
+        // Returned to fullscreen
+        handleSafeStateReturn();
       }
     };
 
@@ -191,36 +164,18 @@ export function useExamSecurity({
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      if (fullscreenExitTimeoutRef.current) {
-        clearTimeout(fullscreenExitTimeoutRef.current);
-      }
     };
-  }, [isActive, heartsRemaining, onViolation, onDisqualify, onAbandon, enterFullscreen]);
+  }, [isActive, triggerGracePeriod, handleSafeStateReturn]);
 
-  // Continuously check and enforce fullscreen while exam is active
-  useEffect(() => {
-    if (!isActive) return;
-
-    const enforceFullscreen = setInterval(() => {
-      if (!document.fullscreenElement && heartsRemaining > 0) {
-        enterFullscreen();
-      }
-    }, 500);
-
-    return () => clearInterval(enforceFullscreen);
-  }, [isActive, heartsRemaining, enterFullscreen]);
-
-  // Handle visibility change (tab switch) with 10-second grace period
+  // Handle visibility change (tab switch)
   useEffect(() => {
     if (!isActive) return;
 
     const handleVisibilityChange = () => {
       if (document.hidden && heartsRef.current > 0) {
-        // Tab is hidden - start grace period
-        handleFocusLossWithGrace('tab_switch');
+        triggerGracePeriod('tab_switch', 'Please return to the exam tab within 10 seconds or a life will be eliminated.');
       } else if (!document.hidden) {
-        // Tab is visible again - cancel pending violation if within grace period
-        handleFocusReturn();
+        handleSafeStateReturn();
       }
     };
 
@@ -228,24 +183,24 @@ export function useExamSecurity({
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearGracePeriodTimer();
     };
-  }, [isActive, handleFocusLossWithGrace, handleFocusReturn, clearGracePeriodTimer]);
+  }, [isActive, triggerGracePeriod, handleSafeStateReturn]);
 
-  // Handle window blur with 10-second grace period
+  // Handle window blur
   useEffect(() => {
     if (!isActive) return;
 
     const handleBlur = () => {
-      if (heartsRef.current > 0) {
-        // Window lost focus - start grace period
-        handleFocusLossWithGrace('window_blur');
+      if (heartsRef.current > 0 && !document.hidden && !!document.fullscreenElement) {
+        // Only trigger blur if not already covered by hidden/fullscreen
+        // But often blur happens with tab switch, so let's be careful not to double trigger.
+        // triggerGracePeriod checks `isFocusLostRef`, so it handles deduping.
+        triggerGracePeriod('window_blur', 'Please keep the exam window focused.');
       }
     };
 
     const handleFocus = () => {
-      // Window regained focus - cancel pending violation if within grace period
-      handleFocusReturn();
+      handleSafeStateReturn();
     };
 
     window.addEventListener('blur', handleBlur);
@@ -254,9 +209,8 @@ export function useExamSecurity({
     return () => {
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
-      clearGracePeriodTimer();
     };
-  }, [isActive, handleFocusLossWithGrace, handleFocusReturn, clearGracePeriodTimer]);
+  }, [isActive, triggerGracePeriod, handleSafeStateReturn]);
 
   // Prevent copy, paste, right-click
   useEffect(() => {
@@ -287,13 +241,13 @@ export function useExamSecurity({
           toast.warning('Keyboard shortcuts are disabled during the exam');
         }
       }
-      
+
       // Prevent F5 refresh
       if (e.key === 'F5') {
         e.preventDefault();
         toast.warning('Page refresh is disabled during the exam');
       }
-      
+
       // Prevent Ctrl+R refresh
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
         e.preventDefault();
@@ -364,5 +318,6 @@ export function useExamSecurity({
     isFullscreen,
     enterFullscreen,
     exitFullscreen,
+    warning,
   };
 }
