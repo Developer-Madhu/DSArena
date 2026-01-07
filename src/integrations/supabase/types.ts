@@ -677,6 +677,39 @@ export type Database = {
         }
         Relationships: []
       }
+      question_variants: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          input_format: string
+          original_question_id: string
+          output_format: string
+          title: string
+          visible_test_cases: Json
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          input_format: string
+          original_question_id: string
+          output_format: string
+          title: string
+          visible_test_cases: Json
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          input_format?: string
+          original_question_id?: string
+          output_format?: string
+          title?: string
+          visible_test_cases?: Json
+        }
+        Relationships: []
+      }
       skill_ratings: {
         Row: {
           accuracy: number | null
