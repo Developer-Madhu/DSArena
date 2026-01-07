@@ -122,7 +122,7 @@ export function Leaderboard({ className }: LeaderboardProps) {
     const { data: achievements } = await supabase
       .from('leaderboard_achievements')
       .select('user_id, tag_type')
-      .in('user_id', userIds);
+      .in('user_id', userIds) as { data: any[] | null; error: any };
 
     const achievementsByUser: Record<string, string[]> = {};
     for (const ach of achievements || []) {

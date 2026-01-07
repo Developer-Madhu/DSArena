@@ -17,7 +17,7 @@ export async function checkBonusEligibility(userId: string): Promise<boolean> {
     .from('profiles')
     .select('consecutive_fast_solves, last_fast_solve_at')
     .eq('id', userId)
-    .single();
+    .single() as { data: any; error: any };
 
   if (error || !profile) return false;
 
@@ -45,7 +45,7 @@ export async function recordFastSolve(userId: string, solveTimeSeconds: number):
     .from('profiles')
     .select('consecutive_fast_solves, last_fast_solve_at')
     .eq('id', userId)
-    .single();
+    .single() as { data: any; error: any };
 
   if (error || !profile) {
     return { consecutiveFastSolves: 0, lastFastSolveAt: null, qualifiesForBonus: false };
@@ -68,13 +68,13 @@ export async function recordFastSolve(userId: string, solveTimeSeconds: number):
     consecutiveSolves = 0;
   }
 
-  // Update profile
+  // Update profile (using any cast due to column not in generated types)
   await supabase
     .from('profiles')
     .update({
       consecutive_fast_solves: consecutiveSolves,
       last_fast_solve_at: new Date().toISOString(),
-    })
+    } as any)
     .eq('id', userId);
 
   const qualifiesForBonus = consecutiveSolves >= CONSECUTIVE_REQUIRED;
@@ -92,7 +92,7 @@ export async function resetFastSolveStreak(userId: string): Promise<void> {
     .from('profiles')
     .update({
       consecutive_fast_solves: 0,
-    })
+    } as any)
     .eq('id', userId);
 }
 

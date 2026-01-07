@@ -112,7 +112,7 @@ class LearningRecommenderSystem {
     const { data: arenaSessions } = await supabase
       .from('arena_sessions')
       .select('topic, difficulty, time_taken_seconds, result, attempts_count')
-      .eq('user_id', userId);
+      .eq('user_id', userId) as { data: any[] | null; error: any };
 
     const { data: skillRatings } = await supabase
       .from('skill_ratings')

@@ -249,7 +249,7 @@ export async function updateSkillRating(
     })
     .eq('id', current.id)
     .select()
-    .single();
+    .single() as { data: any; error: any };
     
   if (error) {
     console.error('Error updating skill rating:', error);
@@ -287,7 +287,7 @@ export async function startArenaSession(
       attempts_count: 0,
     })
     .select()
-    .single();
+    .single() as { data: any; error: any };
     
   if (error) {
     console.error('Error starting arena session:', error);
@@ -310,7 +310,7 @@ export async function completeArenaSession(
     .from('arena_sessions')
     .select('*')
     .eq('id', sessionId)
-    .single();
+    .single() as { data: any; error: any };
     
   if (!session) return null;
   
@@ -354,7 +354,7 @@ export async function completeArenaSession(
     })
     .eq('id', sessionId)
     .select()
-    .single();
+    .single() as { data: any; error: any };
     
   if (error) {
     console.error('Error completing arena session:', error);
@@ -380,7 +380,7 @@ export async function checkDifficultyUnlock(
     .eq('user_id', userId)
     .eq('topic', topic)
     .eq('difficulty', targetDifficulty)
-    .maybeSingle();
+    .maybeSingle() as { data: any; error: any };
     
   if (existing?.unlocked) {
     return existing as TopicUnlock;
@@ -394,7 +394,7 @@ export async function checkDifficultyUnlock(
     .eq('topic', topic)
     .eq('difficulty', prerequisiteDifficulty)
     .eq('mode', 'interview')
-    .not('result', 'is', null);
+    .not('result', 'is', null) as { data: any[] | null; error: any };
     
   const totalAttempts = sessions?.length || 0;
   const solvedCount = sessions?.filter(s => s.result === 'solved').length || 0;

@@ -128,7 +128,7 @@ export async function saveProgress(
       .select('id, attempts, best_runtime_ms')
       .eq('user_id', userId)
       .eq(matchColumn, problemId)
-      .maybeSingle();
+      .maybeSingle() as { data: any; error: any };
 
     if (checkError) {
       console.error('Error checking existing record:', checkError);

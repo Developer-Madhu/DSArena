@@ -1,7 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { corsHeaders } from "../_shared/cors.ts"
 
-const GEMINI_API_KEY = 'AIzaSyCEExLBHyTQ4nfn4DmKTOS2IJybAnMqFbs'; // Provided by user
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY') || '';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 serve(async (req) => {
@@ -88,7 +92,7 @@ serve(async (req) => {
     } catch (error) {
         console.error('Error:', error);
         return new Response(
-            JSON.stringify({ error: error.message }),
+            JSON.stringify({ error: (error as Error).message }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
         )
     }
