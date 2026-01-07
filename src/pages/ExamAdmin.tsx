@@ -7,9 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, XCircle, Clock, Users, Trophy, AlertTriangle, Unlock, RefreshCw, RotateCcw, UserCheck, Ban, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Users, Trophy, AlertTriangle, Unlock, RefreshCw, RotateCcw, UserCheck, Ban, Trash2, Filter, Sparkles, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatExamTime } from '@/lib/examUtils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { getPythonCategories, pythonProblemsData } from '@/lib/pythonProblemsData';
+import { rephraseQuestionWithGemini } from '@/lib/gemini';
 
 interface ExamSession {
   id: string;
@@ -66,10 +70,51 @@ export default function ExamAdmin() {
   const [isApprovingAll, setIsApprovingAll] = useState(false);
   const [isDeletingEntries, setIsDeletingEntries] = useState(false);
   const [isRetakingAll, setIsRetakingAll] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<string>("All");
+  const [topics, setTopics] = useState<string[]>([]);
+  const [isSavingTopic, setIsSavingTopic] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     checkAdminAndLoad();
   }, [user]);
+
+  // Load topics and current configuration
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const loadTopicsAndConfig = async () => {
+      // 1. Load Topics (Always from local data to ensure match with exam generation)
+      setTopics(getPythonCategories());
+
+
+      // 2. Load Config
+      try {
+        const { data: configData } = await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from('app_config' as any)
+          .select('value')
+          .eq('key', 'python_exam_topic')
+          .maybeSingle();
+
+        if (configData) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setSelectedTopic((configData as any).value);
+        } else {
+          // Fallback to localStorage if DB empty/missing
+          const localTopic = localStorage.getItem('python_exam_topic');
+          if (localTopic) setSelectedTopic(localTopic);
+        }
+      } catch (err) {
+        console.error('Error loading config:', err);
+        // Fallback to localStorage on error
+        const localTopic = localStorage.getItem('python_exam_topic');
+        if (localTopic) setSelectedTopic(localTopic);
+      }
+    };
+
+    loadTopicsAndConfig();
+  }, [isAdmin]);
 
   // Set up realtime subscription
   useEffect(() => {
@@ -255,6 +300,68 @@ export default function ExamAdmin() {
     }
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [genProgress, setGenProgress] = useState("");
+
+  const handleGenerateVariants = async () => {
+    if (!confirm('This will utilize the Gemini API to generate variants for ALL Python questions. This might take a while. Continue?')) {
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenProgress("Starting generation...");
+
+    try {
+      const problems = pythonProblemsData; // Importing from lib/pythonProblemsData
+      let count = 0;
+
+      for (const problem of problems) {
+        setGenProgress(`Processing ${problem.id} (${count + 1}/${problems.length})...`);
+
+        // Generate 3 variants
+        const variants = await rephraseQuestionWithGemini(problem, 3);
+
+        if (variants && variants.length > 0) {
+          // Insert into DB
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const records = variants.map((v: any) => ({
+            original_question_id: problem.id,
+            title: v.title,
+            description: v.description,
+            input_format: v.inputFormat,
+            output_format: v.outputFormat,
+            visible_test_cases: v.visibleTestCases
+          }));
+
+          const { error } = await supabase
+            .from('question_variants')
+            .insert(records);
+
+          if (error) {
+            console.error(`Failed to save variants for ${problem.id}:`, error);
+          } else {
+            console.log(`Saved ${variants.length} variants for ${problem.id}`);
+          }
+        } else {
+          console.warn(`No variants generated for ${problem.id}`);
+        }
+
+        count++;
+        // Small delay to avoid rate limits
+        await new Promise(r => setTimeout(r, 1000));
+      }
+
+      setGenProgress("Complete! generated variants for " + count + " questions.");
+      toast.success("Variant generation complete!");
+    } catch (err) {
+      console.error('Generation failed:', err);
+      setGenProgress("Failed: " + err);
+      toast.error("Generation failed");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // Approve ALL blocked users at once
   const approveAllUsers = async () => {
     if (blockedUsers.length === 0) {
@@ -323,6 +430,59 @@ export default function ExamAdmin() {
       toast.error('Failed to enable retake for all users');
     } finally {
       setIsRetakingAll(false);
+    }
+  };
+
+  const handleTopicChange = async (topic: string) => {
+    console.log('═══════════════════════════════════════════');
+    console.log('[ADMIN] Topic selection changed to:', topic);
+    setSelectedTopic(topic);
+    setIsSavingTopic(true);
+    try {
+      // Check if config exists first
+      const { data: existing } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from('app_config' as any)
+        .select('key')
+        .eq('key', 'python_exam_topic')
+        .maybeSingle();
+
+      if (existing) {
+        await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from('app_config' as any)
+          .update({ value: topic })
+          .eq('key', 'python_exam_topic');
+      } else {
+        await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from('app_config' as any)
+          .insert({ key: 'python_exam_topic', value: topic });
+      }
+      // Save to MULTIPLE storage locations to bypass browser blocking
+      try {
+        localStorage.setItem('python_exam_topic', topic);
+        console.log('[ADMIN] ✅ Saved to localStorage:', topic);
+      } catch (e) {
+        console.warn('[ADMIN] ⚠️ localStorage blocked:', e);
+      }
+
+      try {
+        sessionStorage.setItem('python_exam_topic', topic);
+        console.log('[ADMIN] ✅ Saved to sessionStorage:', topic);
+      } catch (e) {
+        console.warn('[ADMIN] ⚠️ sessionStorage blocked:', e);
+      }
+
+      console.log('[ADMIN] Verification - Topic saved as:', topic);
+      console.log('═══════════════════════════════════════════');
+
+      toast.success(`Exam topic set to: ${topic}`);
+    } catch (err) {
+      console.error('Error saving topic:', err);
+      toast.error('Failed to save exam topic');
+    } finally {
+      setIsSavingTopic(false);
     }
   };
 
@@ -513,6 +673,89 @@ export default function ExamAdmin() {
     }
   };
 
+  const deleteSingleSession = async (sessionId: string) => {
+    if (!confirm('Are you sure you want to delete this exam entry? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      console.log('Attempting to delete session:', sessionId);
+
+      // 1. Handle Foreign Key in exam_eligibility (last_exam_session_id)
+      // This is critical because some eligibility records point to this session and will block deletion
+      const { error: eligibilityUpdateError } = await supabase
+        .from('exam_eligibility')
+        .update({ last_exam_session_id: null })
+        .eq('last_exam_session_id', sessionId);
+
+      if (eligibilityUpdateError) {
+        console.warn('Could not nullify eligibility FK (might not exist):', eligibilityUpdateError);
+      }
+
+      // 2. The other tables have ON DELETE CASCADE from migrations, 
+      // but we'll keep manual cleanup for extra safety if needed.
+      // However, we MUST handle the session delete last.
+
+      // Delete exam answers
+      await supabase.from('exam_answers').delete().eq('exam_session_id', sessionId);
+      // Delete exam results
+      await supabase.from('exam_results').delete().eq('exam_session_id', sessionId);
+      // Delete exam violations
+      await supabase.from('exam_violations').delete().eq('exam_session_id', sessionId);
+
+      // 3. Delete exam session
+      const { error, count, status } = await supabase
+        .from('exam_sessions')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .delete({ count: 'planned' } as any) // try to get count
+        .eq('id', sessionId);
+
+      if (error) throw error;
+
+      // If no error but also no records affected, it's likely an RLS policy issue
+      // since the admin might not have DELETE permission.
+      console.log('Delete result status:', status);
+
+      // Optimistic Update: Immediately remove from local state
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+
+      toast.success('Exam entry deleted successfully');
+
+      // Still reload data to be safe, but UI is already updated
+      await loadData();
+    } catch (err: unknown) {
+      console.error('Error deleting entry:', err);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((err as any).message?.includes('policy')) {
+        toast.error('Permission denied: Admin DELETE policy missing');
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        toast.error(`Failed to delete entry: ${(err as any).message || 'Unknown error'}`);
+      }
+    }
+  };
+
+  const deleteEligibilityRecord = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this eligibility record?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('exam_eligibility')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast.success('Eligibility record deleted');
+      await loadData();
+    } catch (err) {
+      console.error('Error deleting record:', err);
+      toast.error('Failed to delete record');
+    }
+  };
+
   const getResultBadge = (session: ExamSession) => {
     const result = getExamResult(session);
     switch (result) {
@@ -572,6 +815,39 @@ export default function ExamAdmin() {
 
   // Get in-progress sessions that can be revoked
   const inProgressSessions = sessions.filter(s => getExamResult(s) === 'in_progress');
+
+  // Filtered data based on search query
+  const filteredSessions = sessions.filter(s => {
+    const searchLower = searchQuery.toLowerCase().trim();
+    if (!searchLower) return true;
+    const displayName = (s.display_name || "").toLowerCase();
+    const username = (s.username || "").toLowerCase();
+    return displayName.includes(searchLower) || username.includes(searchLower) || s.user_id.toLowerCase().includes(searchLower);
+  });
+
+  const filteredInProgressSessions = inProgressSessions.filter(s => {
+    const searchLower = searchQuery.toLowerCase().trim();
+    if (!searchLower) return true;
+    const displayName = (s.display_name || "").toLowerCase();
+    const username = (s.username || "").toLowerCase();
+    return displayName.includes(searchLower) || username.includes(searchLower) || s.user_id.toLowerCase().includes(searchLower);
+  });
+
+  const filteredFailedSessions = failedSessions.filter(s => {
+    const searchLower = searchQuery.toLowerCase().trim();
+    if (!searchLower) return true;
+    const displayName = (s.display_name || "").toLowerCase();
+    const username = (s.username || "").toLowerCase();
+    return displayName.includes(searchLower) || username.includes(searchLower) || s.user_id.toLowerCase().includes(searchLower);
+  });
+
+  const filteredBlockedUsers = blockedUsers.filter(u => {
+    const searchLower = searchQuery.toLowerCase().trim();
+    if (!searchLower) return true;
+    const displayName = (u.display_name || "").toLowerCase();
+    const username = (u.username || "").toLowerCase();
+    return displayName.includes(searchLower) || username.includes(searchLower) || u.user_id.toLowerCase().includes(searchLower);
+  });
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -638,6 +914,40 @@ export default function ExamAdmin() {
           </Card>
         </div>
 
+
+        {/* Exam Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" />
+              Exam Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="w-1/2">
+                <label className="text-sm font-medium mb-2 block">
+                  Active Python Exam Topic
+                </label>
+                <Select value={selectedTopic} onValueChange={handleTopicChange} disabled={isSavingTopic}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All Topics (Mixed)</SelectItem>
+                    {topics.map(topic => (
+                      <SelectItem key={topic} value={topic}>{topic}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Exams will be generated using questions strictly from this category.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Bulk Actions */}
         <Card>
           <CardHeader>
@@ -701,17 +1011,28 @@ export default function ExamAdmin() {
           </CardContent>
         </Card>
 
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, username or ID..."
+            className="pl-10 h-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
         <Tabs defaultValue="all">
           <TabsList>
-            <TabsTrigger value="all">All Exams ({sessions.length})</TabsTrigger>
+            <TabsTrigger value="all">All Exams ({filteredSessions.length})</TabsTrigger>
             <TabsTrigger value="in_progress">
-              In Progress ({inProgressSessions.length})
+              In Progress ({filteredInProgressSessions.length})
             </TabsTrigger>
             <TabsTrigger value="failed">
-              Failed/Disqualified ({failedSessions.length})
+              Failed/Disqualified ({filteredFailedSessions.length})
             </TabsTrigger>
             <TabsTrigger value="blocked">
-              Blocked Users ({blockedUsers.length})
+              Blocked Users ({filteredBlockedUsers.length})
             </TabsTrigger>
           </TabsList>
 
@@ -739,7 +1060,7 @@ export default function ExamAdmin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sessions.map((session) => {
+                      {filteredSessions.map((session) => {
                         const result = getExamResult(session);
                         const isStale = session.status === 'in_progress' && result === 'disqualified';
                         const isInProgress = result === 'in_progress';
@@ -791,6 +1112,14 @@ export default function ExamAdmin() {
                                     Allow Retake
                                   </Button>
                                 )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:bg-destructive/10"
+                                  onClick={() => deleteSingleSession(session.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -827,7 +1156,7 @@ export default function ExamAdmin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {inProgressSessions.map((session) => (
+                      {filteredInProgressSessions.map((session) => (
                         <TableRow key={session.id}>
                           <TableCell className="font-medium">
                             {session.display_name || session.username || session.user_id.slice(0, 8)}
@@ -839,14 +1168,24 @@ export default function ExamAdmin() {
                             {new Date(session.created_at).toLocaleString()}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => revokeExam(session.id, session.user_id)}
-                            >
-                              <Ban className="h-4 w-4 mr-2" />
-                              Revoke Exam
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => revokeExam(session.id, session.user_id)}
+                              >
+                                <Ban className="h-4 w-4 mr-2" />
+                                Revoke Exam
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => deleteSingleSession(session.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -882,7 +1221,7 @@ export default function ExamAdmin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {failedSessions.map((session) => {
+                      {filteredFailedSessions.map((session) => {
                         const result = getExamResult(session);
                         const isStale = session.status === 'in_progress' && result === 'disqualified';
 
@@ -915,6 +1254,14 @@ export default function ExamAdmin() {
                                 >
                                   <RotateCcw className="h-4 w-4 mr-2" />
                                   Allow Retake
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:bg-destructive/10"
+                                  onClick={() => deleteSingleSession(session.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -949,7 +1296,7 @@ export default function ExamAdmin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {blockedUsers.map((blocked) => (
+                      {filteredBlockedUsers.map((blocked) => (
                         <TableRow key={blocked.id}>
                           <TableCell className="font-medium">
                             {blocked.display_name || blocked.username || blocked.user_id.slice(0, 8)}
@@ -958,10 +1305,20 @@ export default function ExamAdmin() {
                             {blocked.blocked_at ? new Date(blocked.blocked_at).toLocaleString() : '-'}
                           </TableCell>
                           <TableCell>
-                            <Button size="sm" onClick={() => approveRetake(blocked.user_id)}>
-                              <Unlock className="h-4 w-4 mr-2" />
-                              Approve Retake
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" onClick={() => approveRetake(blocked.user_id)}>
+                                <Unlock className="h-4 w-4 mr-2" />
+                                Approve Retake
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => deleteEligibilityRecord(blocked.user_id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

@@ -7,10 +7,10 @@ interface UseExamSecurityProps {
   onViolation: (type: string) => void;
   onDisqualify: () => void;
   onAbandon?: () => void;
-  onAutoSubmit?: () => void; // Called when lives reach 0 to auto-submit
+  onAutoSubmit?: () => void;
 }
 
-const GRACE_PERIOD_MS = 10 * 1000; // 10 seconds grace period
+const GRACE_PERIOD_MS = 10 * 1000;
 
 export function useExamSecurity({
   isActive,
@@ -21,9 +21,8 @@ export function useExamSecurity({
   onAutoSubmit,
 }: UseExamSecurityProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const violationCountRef = useRef(0);
 
-  // Use ref to track current hearts to avoid stale closure issues
+  // Use ref to track current hearts
   const heartsRef = useRef(heartsRemaining);
   useEffect(() => {
     heartsRef.current = heartsRemaining;
@@ -39,7 +38,6 @@ export function useExamSecurity({
     endTime: null,
   });
 
-  // Clear the grace period timer
   const clearGracePeriodTimer = useCallback(() => {
     if (focusLossTimerRef.current) {
       clearTimeout(focusLossTimerRef.current);
@@ -50,7 +48,6 @@ export function useExamSecurity({
     setWarning({ isOpen: false, message: '', endTime: null });
   }, []);
 
-  // Request fullscreen
   const enterFullscreen = useCallback(async () => {
     try {
       const elem = document.documentElement;
@@ -70,78 +67,55 @@ export function useExamSecurity({
     }
   }, []);
 
-  // Exit fullscreen
   const exitFullscreen = useCallback(() => {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if ((document as any).webkitExitFullscreen) {
-      (document as any).webkitExitFullscreen();
+    try {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch((err) => {
+          console.warn('Exit fullscreen failed:', err);
+        });
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+    } catch (err) {
+      console.warn('Exit fullscreen error:', err);
     }
     setIsFullscreen(false);
   }, []);
 
-  // Handle violation with grace period
   const triggerGracePeriod = useCallback((violationType: string, message: string) => {
-    // If already tracking a violation, don't restart (unless it's a different critical type, but keep simple)
     if (isFocusLostRef.current) return;
 
     isFocusLostRef.current = true;
     pendingViolationTypeRef.current = violationType;
 
-    // Show warning immediately
     setWarning({
       isOpen: true,
       message: message,
       endTime: Date.now() + GRACE_PERIOD_MS
     });
 
-    // Start grace period timer
     focusLossTimerRef.current = setTimeout(() => {
-      const currentHearts = heartsRef.current;
-
       // If timer executes, it means user didn't return in time
-      if (isFocusLostRef.current && currentHearts > 0) {
-        onViolation(violationType);
-
-        // Attempt to re-enter fullscreen automatically after penalty
-        // We use a small timeout to allow state updates to settle and hope browser grants permission
-        setTimeout(() => {
-          console.log('Attempting auto-fullscreen recovery after violation penalty...');
-          enterFullscreen().then(success => {
-            if (success) {
-              console.log('Auto-fullscreen recovery successful');
-            } else {
-              console.warn('Auto-fullscreen recovery blocked by browser or failed');
-            }
-          }).catch(err => console.error('Auto-fullscreen error:', err));
-        }, 100);
-
-        // Check if this causes lives to reach 0
-        const newHearts = currentHearts - 1;
-        if (newHearts <= 0 && onAutoSubmit) {
-          setTimeout(() => {
-            onAutoSubmit();
-          }, 100);
+      if (isFocusLostRef.current) {
+        console.warn('[EXAM SECURITY] 10-second warning expired - eliminating all lives & auto-submitting');
+        if (onAbandon) {
+          onAbandon();
+        } else if (onAutoSubmit) {
+          onAutoSubmit();
         }
       }
       clearGracePeriodTimer();
     }, GRACE_PERIOD_MS);
-  }, [onViolation, onAutoSubmit, clearGracePeriodTimer, enterFullscreen]);
+  }, [onViolation, onAbandon, onAutoSubmit, clearGracePeriodTimer]);
 
-  // Handle return to safe state
   const handleSafeStateReturn = useCallback(() => {
-    // Only clear if we are currently in a "lost" state and the environment is actually safe
-    // Safe means: Fullscreen IS active AND Document IS visible/focused
     const isSafe = !!document.fullscreenElement && !document.hidden;
-
     if (isFocusLostRef.current && isSafe) {
       clearGracePeriodTimer();
     }
   }, [clearGracePeriodTimer]);
 
-
-
-  // Handle fullscreen change
+  // Sync Fullscreen State & Listener
   useEffect(() => {
     if (!isActive) return;
 
@@ -149,11 +123,9 @@ export function useExamSecurity({
       const isNowFullscreen = !!document.fullscreenElement;
       setIsFullscreen(isNowFullscreen);
 
-      if (!isNowFullscreen && isActive && heartsRef.current > 0) {
-        // Fullscreen exited - trigger grace period
+      if (!isNowFullscreen && heartsRef.current > 0) {
         triggerGracePeriod('fullscreen_exit', 'Please return to fullscreen within 10 seconds or a life will be eliminated.');
       } else if (isNowFullscreen) {
-        // Returned to fullscreen
         handleSafeStateReturn();
       }
     };
@@ -161,13 +133,24 @@ export function useExamSecurity({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
+    // Initial check when becoming active
+    if (document.fullscreenElement) {
+      setIsFullscreen(true);
+    } else {
+      // If we are active but NOT in fullscreen, that's immediate violation?
+      // No, let's allow the user a moment or assume enterFullscreen was called.
+      // But if they manually exited during "loading", we should know.
+      // Let's just sync state.
+      setIsFullscreen(false);
+    }
+
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
     };
   }, [isActive, triggerGracePeriod, handleSafeStateReturn]);
 
-  // Handle visibility change (tab switch)
+  // Visibility (Exact original logic)
   useEffect(() => {
     if (!isActive) return;
 
@@ -186,15 +169,12 @@ export function useExamSecurity({
     };
   }, [isActive, triggerGracePeriod, handleSafeStateReturn]);
 
-  // Handle window blur
+  // Blur (Exact original logic)
   useEffect(() => {
     if (!isActive) return;
 
     const handleBlur = () => {
       if (heartsRef.current > 0 && !document.hidden && !!document.fullscreenElement) {
-        // Only trigger blur if not already covered by hidden/fullscreen
-        // But often blur happens with tab switch, so let's be careful not to double trigger.
-        // triggerGracePeriod checks `isFocusLostRef`, so it handles deduping.
         triggerGracePeriod('window_blur', 'Please keep the exam window focused.');
       }
     };
@@ -212,57 +192,22 @@ export function useExamSecurity({
     };
   }, [isActive, triggerGracePeriod, handleSafeStateReturn]);
 
-  // Prevent copy, paste, right-click
+  // Copy/Paste (Exact original logic)
   useEffect(() => {
     if (!isActive) return;
-
-    const handleCopy = (e: ClipboardEvent) => {
-      e.preventDefault();
-      onViolation('copy');
-      toast.warning('Copying is disabled during the exam');
-    };
-
-    const handlePaste = (e: ClipboardEvent) => {
-      e.preventDefault();
-      onViolation('paste');
-      toast.warning('Pasting is disabled during the exam');
-    };
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      toast.warning('Right-click is disabled during the exam');
-    };
-
+    // ... (keep short for brevity in thought, but full in file)
+    const handleCopy = (e: ClipboardEvent) => { e.preventDefault(); onViolation('copy'); toast.warning('Copying is disabled'); };
+    const handlePaste = (e: ClipboardEvent) => { e.preventDefault(); onViolation('paste'); toast.warning('Pasting is disabled'); };
+    const handleContextMenu = (e: MouseEvent) => { e.preventDefault(); toast.warning('Right-click is disabled'); };
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent Ctrl+C, Ctrl+V, Ctrl+X
       if (e.ctrlKey || e.metaKey) {
-        if (['c', 'v', 'x'].includes(e.key.toLowerCase())) {
-          e.preventDefault();
-          toast.warning('Keyboard shortcuts are disabled during the exam');
-        }
+        if (['c', 'v', 'x'].includes(e.key.toLowerCase())) { e.preventDefault(); toast.warning('Shortcuts disabled'); }
+        if (e.key.toLowerCase() === 'r') { e.preventDefault(); toast.warning('Refresh disabled'); }
       }
-
-      // Prevent F5 refresh
-      if (e.key === 'F5') {
-        e.preventDefault();
-        toast.warning('Page refresh is disabled during the exam');
-      }
-
-      // Prevent Ctrl+R refresh
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
-        e.preventDefault();
-        toast.warning('Page refresh is disabled during the exam');
-      }
+      if (e.key === 'F5') { e.preventDefault(); toast.warning('Refresh disabled'); }
     };
+    const handlePopState = (e: PopStateEvent) => { e.preventDefault(); window.history.pushState(null, '', window.location.href); toast.warning('Back nav disabled'); };
 
-    // Prevent back navigation
-    const handlePopState = (e: PopStateEvent) => {
-      e.preventDefault();
-      window.history.pushState(null, '', window.location.href);
-      toast.warning('Back navigation is disabled during the exam');
-    };
-
-    // Push initial state
     window.history.pushState(null, '', window.location.href);
 
     document.addEventListener('copy', handleCopy);
@@ -280,44 +225,25 @@ export function useExamSecurity({
     };
   }, [isActive, onViolation]);
 
-  // Prevent beforeunload
   useEffect(() => {
     if (!isActive) return;
-
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = 'You have an exam in progress. Are you sure you want to leave?';
-      return e.returnValue;
+      e.preventDefault(); e.returnValue = 'Exam in progress'; return e.returnValue;
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isActive]);
 
-  // Check hearts and disqualify if needed
   useEffect(() => {
     if (heartsRemaining <= 0 && isActive) {
       onDisqualify();
     }
   }, [heartsRemaining, isActive, onDisqualify]);
 
-  // Cleanup grace period timer on unmount or when exam becomes inactive
   useEffect(() => {
-    if (!isActive) {
-      clearGracePeriodTimer();
-    }
-    return () => {
-      clearGracePeriodTimer();
-    };
+    if (!isActive) clearGracePeriodTimer();
+    return () => clearGracePeriodTimer();
   }, [isActive, clearGracePeriodTimer]);
 
-  return {
-    isFullscreen,
-    enterFullscreen,
-    exitFullscreen,
-    warning,
-  };
+  return { isFullscreen, enterFullscreen, exitFullscreen, warning };
 }

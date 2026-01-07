@@ -5,12 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  Trophy, 
-  Clock, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Trophy,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
   Home,
   FileText,
   Loader2,
@@ -122,7 +122,7 @@ export function ExamResultsScreen({
       let aiFeedback: string | null = null;
       let weakConcepts: string[] = [];
       let suggestions: string[] = [];
-      
+
       try {
         const { data: aiData } = await supabase.functions.invoke('analyze-exam', {
           body: {
@@ -213,9 +213,19 @@ export function ExamResultsScreen({
             {language.toUpperCase()} Programming Exam
           </p>
           {wasDisqualified && (
-            <Badge variant="destructive" className="text-lg px-4 py-1">
-              Disqualified - Too Many Violations
-            </Badge>
+            <>
+              <Badge variant="destructive" className="text-lg px-4 py-1">
+                Exam Revoked - Focus Violation
+              </Badge>
+              <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-sm font-medium text-destructive">
+                  ⛔ Your exam was revoked because you exited full screen or switched tabs.
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Your score has been calculated based on your progress before the violation. You cannot retake the exam until an admin approves your request.
+                </p>
+              </div>
+            </>
           )}
           {wasAutoSubmitted && !wasDisqualified && (
             <Badge variant="secondary" className="text-lg px-4 py-1">
@@ -257,7 +267,7 @@ export function ExamResultsScreen({
               <p className="text-sm text-muted-foreground">Time Spent</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-4 text-center">
               <Trophy className="h-8 w-8 mx-auto text-yellow-500 mb-2" />
@@ -265,7 +275,7 @@ export function ExamResultsScreen({
               <p className="text-sm text-muted-foreground">Tests Passed</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-4 text-center">
               <AlertTriangle className="h-8 w-8 mx-auto text-red-500 mb-2" />
@@ -273,7 +283,7 @@ export function ExamResultsScreen({
               <p className="text-sm text-muted-foreground">Compile Errors</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="pt-4 text-center">
               <XCircle className="h-8 w-8 mx-auto text-orange-500 mb-2" />

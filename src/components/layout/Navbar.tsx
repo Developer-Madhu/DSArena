@@ -88,12 +88,12 @@ export function Navbar() {
                   Practice
                 </Button>
               </Link>
-              <Link to="/videos">
+              {/* <Link to="/videos">
                 <Button variant="ghost" size="sm">
                   <Video className="mr-2 h-4 w-4" />
                   Videos
                 </Button>
-              </Link>
+              </Link> */}
               <Link to="/exam">
                 <Button variant="ghost" size="sm">
                   <ClipboardCheck className="mr-2 h-4 w-4" />

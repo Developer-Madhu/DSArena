@@ -98,7 +98,7 @@ export default function Index() {
               <span className="text-foreground">The Right Way</span>
             </h1>
             <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-              A LeetCode-style platform built for serious Python learners. No pasting, no shortcuts—just
+              A Pre-LeetCode style platform built for serious Python learners. No pasting, no shortcuts—just
               pure problem-solving to build real coding skills.
             </p>
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -335,10 +335,10 @@ export default function Index() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
                 <Code2 className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-semibold">DSArena</span>
+              {/* <span className="font-semibold">DSArena</span> */}
             </div>
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} DSArena built by Vijay.
+              © {new Date().getFullYear()} DSArena by Krit.
             </p>
           </div>
         </div>

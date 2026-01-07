@@ -38,6 +38,7 @@ export function ExamCodeEditor({
   disabled = false,
   forcePass = false,
 }: ExamCodeEditorProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -46,8 +47,9 @@ export function ExamCodeEditor({
 
   const handleEditorMount: OnMount = (editor) => {
     editorRef.current = editor;
-    
+
     // Disable paste
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     editor.onKeyDown((e: any) => {
       if ((e.ctrlKey || e.metaKey) && e.keyCode === 52) { // KeyV
         e.preventDefault();
@@ -97,7 +99,7 @@ export function ExamCodeEditor({
         expected_output: tc.expectedOutput,
         runtime_ms: Math.floor(Math.random() * 50) + 10, // Random 10-60ms
       }));
-      
+
       setResults(fakeResults);
       setConsoleOutput('All test cases passed successfully!');
       onRunComplete(fakeResults, true, 0, 0);
@@ -267,11 +269,10 @@ export function ExamCodeEditor({
             {results.map((result, index) => (
               <div
                 key={index}
-                className={`p-3 rounded-lg border ${
-                  result.passed 
-                    ? 'bg-green-500/10 border-green-500/30' 
+                className={`p-3 rounded-lg border ${result.passed
+                    ? 'bg-green-500/10 border-green-500/30'
                     : 'bg-red-500/10 border-red-500/30'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2 mb-2">
                   {result.passed ? (
@@ -288,7 +289,7 @@ export function ExamCodeEditor({
                     </span>
                   )}
                 </div>
-                
+
                 {/* Show detailed output for failed tests */}
                 {!result.passed && (
                   <div className="mt-2 space-y-2 text-xs font-mono">
@@ -301,7 +302,7 @@ export function ExamCodeEditor({
                         </pre>
                       </div>
                     )}
-                    
+
                     {/* Expected Output */}
                     {result.expected_output && (
                       <div className="p-2 rounded bg-green-500/5 border border-green-500/20">
@@ -311,7 +312,7 @@ export function ExamCodeEditor({
                         </pre>
                       </div>
                     )}
-                    
+
                     {/* Actual Output */}
                     {result.actual_output !== undefined && (
                       <div className="p-2 rounded bg-red-500/5 border border-red-500/20">
@@ -321,7 +322,7 @@ export function ExamCodeEditor({
                         </pre>
                       </div>
                     )}
-                    
+
                     {/* Error Message */}
                     {result.error && (
                       <div className="p-2 rounded bg-orange-500/10 border border-orange-500/20">
@@ -333,7 +334,7 @@ export function ExamCodeEditor({
                     )}
                   </div>
                 )}
-                
+
                 {/* Show success message for passed tests */}
                 {result.passed && result.actual_output && (
                   <div className="mt-2 text-xs font-mono">

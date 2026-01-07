@@ -8,13 +8,13 @@ export const examQuestionsData: ProblemData[] = [
   // 🎯 EXAM QUESTIONS - Rephrased versions of Python Core problems
   // Same logic, different presentation
   // ============================================================================
-  
+
   // Easy - Digit Reversal (based on reverse-number)
   {
     id: "exam-digit-reversal",
     slug: "exam-digit-reversal",
     title: "Mirror the Digits",
-    category: "Exam",
+    category: "Python Core",
     difficulty: "easy",
     description: `You are given an integer. Your task is to flip all its digits to create a mirror image of the number.
 
@@ -58,7 +58,7 @@ print(mirrorDigits(num))`,
     id: "exam-primality-test",
     slug: "exam-primality-test",
     title: "Is It Indivisible?",
-    category: "Exam",
+    category: "Python Core",
     difficulty: "easy",
     description: `Determine if a given positive integer is a prime number.
 
@@ -104,7 +104,7 @@ print(isIndivisible(n))`,
     id: "exam-factorial-both-ways",
     slug: "exam-factorial-both-ways",
     title: "Calculate n! Two Ways",
-    category: "Exam",
+    category: "Python Core",
     difficulty: "easy",
     description: `Implement factorial calculation using TWO different approaches in the same solution.
 
@@ -152,7 +152,7 @@ print(f"{factorialLoop(n)} {factorialRecursive(n)}")`,
     id: "exam-letter-counter",
     slug: "exam-letter-counter",
     title: "Frequency Analyzer",
-    category: "Exam",
+    category: "Strings",
     difficulty: "easy",
     description: `Build a letter frequency analyzer for a text string.
 
@@ -197,7 +197,7 @@ print(analyzeFrequency(text))`,
     id: "exam-value-exchange",
     slug: "exam-value-exchange",
     title: "Swap Without Extra Space",
-    category: "Exam",
+    category: "Python Core",
     difficulty: "easy",
     description: `Exchange the values of two variables WITHOUT creating a third temporary variable.
 
@@ -243,7 +243,7 @@ print(exchange(a, b))`,
     id: "exam-duplicate-finder",
     slug: "exam-duplicate-finder",
     title: "Spot the Repeaters",
-    category: "Exam",
+    category: "Arrays/Lists",
     difficulty: "medium",
     description: `You're analyzing a dataset and need to identify which values appear more than once.
 
@@ -290,7 +290,7 @@ print(' '.join(map(str, result)) if result else 'None')`,
     id: "exam-unique-order",
     slug: "exam-unique-order",
     title: "Keep First Occurrence Only",
-    category: "Exam",
+    category: "Arrays/Lists",
     difficulty: "medium",
     description: `Clean a list by removing duplicate entries while preserving the original order of first appearances.
 
@@ -338,7 +338,7 @@ print(' '.join(map(str, result)))`,
     id: "exam-unique-char",
     slug: "exam-unique-char",
     title: "First Lonely Letter",
-    category: "Exam",
+    category: "Strings",
     difficulty: "medium",
     description: `In a string, find the first character that appears exactly once.
 
@@ -384,7 +384,7 @@ print(firstLonely(s))`,
     id: "exam-anagram-checker",
     slug: "exam-anagram-checker",
     title: "Are They Rearrangements?",
-    category: "Exam",
+    category: "Strings",
     difficulty: "medium",
     description: `Two words are anagrams if one can be formed by rearranging the letters of the other.
 
@@ -428,7 +428,7 @@ print(areRearrangements(s1, s2))`,
     id: "exam-custom-length",
     slug: "exam-custom-length",
     title: "Count Without len()",
-    category: "Exam",
+    category: "Python Core",
     difficulty: "medium",
     description: `Implement your own length-counting function without using Python's built-in len().
 
@@ -470,7 +470,7 @@ print(countLength(s))`,
     id: "exam-lru-cache",
     slug: "exam-lru-cache",
     title: "Build a Smart Cache",
-    category: "Exam",
+    category: "Hashing",
     difficulty: "hard",
     description: `Design a cache with a limited size that evicts the Least Recently Used item when full.
 
@@ -529,7 +529,7 @@ print('\\n'.join(results))`,
     id: "exam-hashmap-impl",
     slug: "exam-hashmap-impl",
     title: "Build Your Own Dictionary",
-    category: "Exam",
+    category: "Hashing",
     difficulty: "hard",
     description: `Implement a hash map (dictionary) from scratch without using Python's dict.
 

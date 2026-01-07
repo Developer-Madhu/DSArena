@@ -17,6 +17,7 @@ export function CodeEditor({
   readOnly = false,
   height = '100%',
 }: CodeEditorProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
   const [lastLength, setLastLength] = useState(value.length);
   const [lastChangeTime, setLastChangeTime] = useState(Date.now());
@@ -25,6 +26,7 @@ export function CodeEditor({
     editorRef.current = editor;
 
     // Disable paste functionality
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     editor.onKeyDown((e: any) => {
       // Block Ctrl+V / Cmd+V
       if ((e.ctrlKey || e.metaKey) && e.keyCode === monaco.KeyCode.KeyV) {
@@ -123,7 +125,7 @@ export function CodeEditor({
           <span>Chars: {value.length}</span>
         </div>
       </div>
-      
+
       {/* Scrollable Editor Container */}
       <div className="flex-1 relative overflow-hidden">
         <Editor

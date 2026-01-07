@@ -1,0 +1,345 @@
+﻿export type Json =
+    | string
+    | number
+    | boolean
+    | null
+    | { [key: string]: Json | undefined }
+    | Json[]
+
+export interface Database {
+    public: {
+        Tables: {
+            exam_answers: {
+                Row: {
+                    id: string
+                    created_at: string
+                    exam_session_id: string
+                    user_id: string
+                    question_id: string
+                    question_index: number
+                    code: string
+                    language: string
+                    is_correct: boolean
+                    tests_passed: number
+                    tests_total: number
+                    compilation_errors: number
+                    runtime_errors: number
+                    error_messages: string | null
+                    time_spent_seconds: number
+                }
+                Insert: {
+                    id?: string
+                    created_at?: string
+                    exam_session_id: string
+                    user_id: string
+                    question_id: string
+                    question_index: number
+                    code: string
+                    language: string
+                    is_correct?: boolean
+                    tests_passed?: number
+                    tests_total?: number
+                    compilation_errors?: number
+                    runtime_errors?: number
+                    error_messages?: string | null
+                    time_spent_seconds?: number
+                }
+                Update: {
+                    id?: string
+                    created_at?: string
+                    exam_session_id?: string
+                    user_id?: string
+                    question_id?: string
+                    question_index?: number
+                    code?: string
+                    language?: string
+                    is_correct?: boolean
+                    tests_passed?: number
+                    tests_total?: number
+                    compilation_errors?: number
+                    runtime_errors?: number
+                    error_messages?: string | null
+                    time_spent_seconds?: number
+                }
+                Relationships: []
+            }
+            exam_results: {
+                Row: {
+                    id: string
+                    created_at: string
+                    exam_session_id: string
+                    user_id: string
+                    total_score: number
+                    max_score: number
+                    questions_correct: number
+                    questions_total: number
+                    total_compilation_errors: number
+                    total_runtime_errors: number
+                    ai_feedback: string | null
+                    weak_concepts: string[] | null
+                    improvement_suggestions: string[] | null
+                    avg_time_per_question_seconds: number | null
+                }
+                Insert: {
+                    id?: string
+                    created_at?: string
+                    exam_session_id: string
+                    user_id: string
+                    total_score: number
+                    max_score: number
+                    questions_correct: number
+                    questions_total: number
+                    total_compilation_errors: number
+                    total_runtime_errors: number
+                    ai_feedback?: string | null
+                    weak_concepts?: string[] | null
+                    improvement_suggestions?: string[] | null
+                    avg_time_per_question_seconds?: number | null
+                }
+                Update: {
+                    id?: string
+                    created_at?: string
+                    exam_session_id?: string
+                    user_id?: string
+                    total_score?: number
+                    max_score?: number
+                    questions_correct?: number
+                    questions_total?: number
+                    total_compilation_errors?: number
+                    total_runtime_errors?: number
+                    ai_feedback?: string | null
+                    weak_concepts?: string[] | null
+                    improvement_suggestions?: string[] | null
+                    avg_time_per_question_seconds?: number | null
+                }
+                Relationships: []
+            }
+            exam_eligibility: {
+                Row: {
+                    id: string
+                    user_id: string
+                    is_eligible: boolean
+                    last_exam_passed: boolean | null
+                    last_exam_session_id: string | null
+                    blocked_at: string | null
+                    unblocked_by: string | null
+                    unblocked_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    is_eligible?: boolean
+                    last_exam_passed?: boolean | null
+                    last_exam_session_id?: string | null
+                    blocked_at?: string | null
+                    unblocked_by?: string | null
+                    unblocked_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    is_eligible?: boolean
+                    last_exam_passed?: boolean | null
+                    last_exam_session_id?: string | null
+                    blocked_at?: string | null
+                    unblocked_by?: string | null
+                    unblocked_at?: string | null
+                    updated_at?: string | null
+                }
+                Relationships: []
+            }
+            exam_sessions: {
+                Row: {
+                    id: string
+                    user_id: string
+                    language: string
+                    status: string
+                    passed: boolean | null
+                    hearts_remaining: number
+                    time_spent_seconds: number | null
+                    started_at: string | null
+                    completed_at: string | null
+                    created_at: string
+                    total_violations: number
+                    auto_submitted: boolean
+                    question_ids: string[] | null
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    language: string
+                    status?: string
+                    passed?: boolean | null
+                    hearts_remaining?: number
+                    time_spent_seconds?: number | null
+                    started_at?: string | null
+                    completed_at?: string | null
+                    created_at?: string
+                    total_violations?: number
+                    auto_submitted?: boolean
+                    question_ids?: string[] | null
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    language?: string
+                    status?: string
+                    passed?: boolean | null
+                    hearts_remaining?: number
+                    time_spent_seconds?: number | null
+                    started_at?: string | null
+                    completed_at?: string | null
+                    created_at?: string
+                    total_violations?: number
+                    auto_submitted?: boolean
+                    question_ids?: string[] | null
+                }
+                Relationships: []
+            }
+            question_variants: {
+                Row: {
+                    id: string
+                    original_question_id: string
+                    title: string
+                    description: string
+                    input_format: string
+                    output_format: string
+                    visible_test_cases: any
+                }
+                Insert: {
+                    id?: string
+                    original_question_id: string
+                    title: string
+                    description: string
+                    input_format: string
+                    output_format: string
+                    visible_test_cases?: any
+                }
+                Update: {
+                    id?: string
+                    original_question_id?: string
+                    title?: string
+                    description?: string
+                    input_format?: string
+                    output_format?: string
+                    visible_test_cases?: any
+                }
+                Relationships: []
+            }
+            app_config: {
+                Row: {
+                    id: string
+                    key: string
+                    value: string
+                }
+                Insert: {
+                    id?: string
+                    key: string
+                    value: string
+                }
+                Update: {
+                    id?: string
+                    key?: string
+                    value?: string
+                }
+                Relationships: []
+            }
+            profiles: {
+                Row: {
+                    id: string
+                    username: string | null
+                    display_name: string | null
+                    avatar_url: string | null
+                    bio: string | null
+                    is_public: boolean
+                    streak_days: number
+                    updated_at: string | null
+                }
+                Insert: {
+                    id: string
+                    username?: string | null
+                    display_name?: string | null
+                    avatar_url?: string | null
+                    bio?: string | null
+                    is_public?: boolean
+                    streak_days?: number
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    username?: string | null
+                    display_name?: string | null
+                    avatar_url?: string | null
+                    bio?: string | null
+                    is_public?: boolean
+                    streak_days?: number
+                    updated_at?: string | null
+                }
+                Relationships: []
+            }
+            user_solved: {
+                Row: {
+                    user_id: string
+                    first_solved_at: string
+                    best_runtime_ms: number
+                }
+                Insert: {
+                    user_id?: never
+                    first_solved_at?: never
+                    best_runtime_ms?: never
+                }
+                Update: {
+                    user_id?: never
+                    first_solved_at?: never
+                    best_runtime_ms?: never
+                }
+                Relationships: []
+            }
+            exam_violations: {
+                Row: {
+                    id: string
+                    exam_session_id: string
+                    user_id: string
+                    violation_type: string
+                    hearts_before: number
+                    hearts_after: number
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    exam_session_id: string
+                    user_id: string
+                    violation_type: string
+                    hearts_before: number
+                    hearts_after: number
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    exam_session_id?: string
+                    user_id?: string
+                    violation_type?: string
+                    hearts_before?: number
+                    hearts_after?: number
+                    created_at?: string
+                }
+                Relationships: []
+            }
+            [key: string]: any
+        }
+        Views: {
+            [key: string]: any
+        }
+        Functions: {
+            [key: string]: any
+        }
+        Enums: {
+            [key: string]: any
+        }
+        CompositeTypes: {
+            [key: string]: any
+        }
+    }
+}
