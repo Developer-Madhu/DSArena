@@ -421,6 +421,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           current_question_index: number | null
+          exam_instance_id: string | null
           hearts_remaining: number
           id: string
           language: string
@@ -442,6 +443,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           current_question_index?: number | null
+          exam_instance_id?: string | null
           hearts_remaining?: number
           id?: string
           language: string
@@ -463,6 +465,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           current_question_index?: number | null
+          exam_instance_id?: string | null
           hearts_remaining?: number
           id?: string
           language?: string
@@ -478,7 +481,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exam_sessions_exam_instance_id_fkey"
+            columns: ["exam_instance_id"]
+            isOneToOne: false
+            referencedRelation: "exam_instances"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exam_violations: {
         Row: {
