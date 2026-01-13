@@ -323,6 +323,7 @@ export type Database = {
           description: string
           exam_instance_id: string | null
           id: string
+          input_format: string | null
           test_cases: Json
           title: string
         }
@@ -331,6 +332,7 @@ export type Database = {
           description: string
           exam_instance_id?: string | null
           id?: string
+          input_format?: string | null
           test_cases: Json
           title: string
         }
@@ -339,6 +341,7 @@ export type Database = {
           description?: string
           exam_instance_id?: string | null
           id?: string
+          input_format?: string | null
           test_cases?: Json
           title?: string
         }
