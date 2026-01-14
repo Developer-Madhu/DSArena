@@ -749,6 +749,7 @@ export type Database = {
           updated_at: string | null
           username: string | null
           weakest_topic: string | null
+          xp: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -776,6 +777,7 @@ export type Database = {
           updated_at?: string | null
           username?: string | null
           weakest_topic?: string | null
+          xp?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -803,6 +805,7 @@ export type Database = {
           updated_at?: string | null
           username?: string | null
           weakest_topic?: string | null
+          xp?: number | null
         }
         Relationships: []
       }
