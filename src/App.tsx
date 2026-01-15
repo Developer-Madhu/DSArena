@@ -21,6 +21,7 @@ import PracticeProblems from "./pages/PracticeProblems";
 import Videos from "./pages/Videos";
 import Exam from "./pages/Exam";
 import ExamAdmin from "./pages/ExamAdmin";
+import AdminExport from "./pages/AdminExport";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/videos" element={<ProtectedRoute><Videos /></ProtectedRoute>} />
             <Route path="/exam" element={<ProtectedRoute><Exam /></ProtectedRoute>} />
             <Route path="/exam-admin" element={<ProtectedRoute><ExamAdmin /></ProtectedRoute>} />
+            <Route path="/admin-export" element={<ProtectedRoute><AdminExport /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
