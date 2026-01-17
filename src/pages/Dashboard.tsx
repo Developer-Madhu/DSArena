@@ -162,7 +162,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <h2 className="text-2xl font-black italic tracking-tighter uppercase">{profile.display_name || profile.username}</h2>
+                  <h2 className="text-2xl font-black italic tracking-tighter uppercase">{profile.username}</h2>
                   <div className="rank-badge inline-block">{calculations.rank}</div>
                 </div>
               </div>

@@ -153,7 +153,7 @@ export default function Profile() {
             {/* Identity Info */}
             <div className="space-y-1 mb-6">
               <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white drop-shadow-lg">
-                {displayName || username || 'UNRESOLVED_ENTITY'}
+                {username || 'UNRESOLVED_ENTITY'}
               </h1>
               <div className="flex items-center justify-center gap-3">
                 {/* <Shield className="h-4 w-4 text-cyan-400" /> */}
