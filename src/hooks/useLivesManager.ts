@@ -6,13 +6,18 @@ import { toast } from 'sonner';
 export function useLivesManager(userId?: string) {
     const [lives, setLives] = useState<number>(LIVES_CONFIG.MAX_LIVES);
     const [noLives, setNoLives] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [timeUntilRestore, setTimeUntilRestore] = useState<number | null>(null);
 
     const refreshLives = useCallback(async () => {
-        if (!userId) return;
+        if (!userId) {
+            setIsLoading(false);
+            return;
+        }
         const data = await fetchLivesData(userId);
         setLives(data.lives);
         setNoLives(data.lives === 0);
+        setIsLoading(false);
         return data;
     }, [userId]);
 
@@ -65,6 +70,7 @@ export function useLivesManager(userId?: string) {
     return {
         lives,
         noLives,
+        isLoading,
         timeUntilRestore,
         formattedTimeRemaining: timeUntilRestore ? formatTimeRemaining(timeUntilRestore) : null,
         penalize: handlePenalty,

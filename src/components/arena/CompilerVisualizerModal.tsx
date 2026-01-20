@@ -22,10 +22,12 @@ import {
     ZoomIn,
     ZoomOut,
     Maximize,
-    Grab
+    Grab,
+    AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 interface CompilerVisualizerModalProps {
     isOpen: boolean;
@@ -33,6 +35,15 @@ interface CompilerVisualizerModalProps {
     initialCode: string;
     language: string;
 }
+
+const tabs = [
+    { name: 'Flowchart', icon: <GitBranch className="w-4 h-4" /> },
+    { name: 'ASCII Flow', icon: <FileText className="w-4 h-4" /> },
+    { name: 'State Table', icon: <TableIcon className="w-4 h-4" /> },
+    { name: 'Logic', icon: <Info className="w-4 h-4" /> },
+    { name: 'Animation', icon: <Activity className="w-4 h-4" /> },
+    { name: 'Narration', icon: <Volume2 className="w-4 h-4" /> },
+];
 
 const CompilerVisualizerModal: React.FC<CompilerVisualizerModalProps> = ({
     isOpen,
@@ -50,34 +61,77 @@ const CompilerVisualizerModal: React.FC<CompilerVisualizerModalProps> = ({
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackSpeed, setPlaybackSpeed] = useState(1000);
     const [zoomLevel, setZoomLevel] = useState(1.2);
+    const [cooldown, setCooldown] = useState(0);
 
-    const tabs = [
-        { name: 'Flowchart', icon: <GitBranch className="w-4 h-4" /> },
-        { name: 'ASCII Flow', icon: <FileText className="w-4 h-4" /> },
-        { name: 'State Table', icon: <TableIcon className="w-4 h-4" /> },
-        { name: 'Logic', icon: <Info className="w-4 h-4" /> },
-        { name: 'Animation', icon: <Activity className="w-4 h-4" /> },
-        { name: 'Narration', icon: <Volume2 className="w-4 h-4" /> },
-    ];
+    const isMounted = React.useRef(false);
+    const hasAutoAnalyzed = React.useRef(false);
 
     useEffect(() => {
-        if (isOpen && initialCode) {
+        isMounted.current = true;
+        return () => { isMounted.current = false; };
+    }, []);
+
+    useEffect(() => {
+        const shouldAnalyze = isOpen && initialCode && !hasAutoAnalyzed.current;
+
+        if (shouldAnalyze) {
+            hasAutoAnalyzed.current = true; // LOCK IMMEDIATELY
             handleAnalyze();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, initialCode]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            hasAutoAnalyzed.current = false;
+            setAnalysis(null);
+            setCooldown(0);
         }
     }, [isOpen]);
 
     const handleAnalyze = async () => {
+        if (loading || cooldown > 0) return;
         setLoading(true);
         try {
             const result = await analyzeCode(initialCode, language, input);
-            setAnalysis(result);
-            setAnimationStep(0);
-        } catch (error) {
+
+            if (isMounted.current) {
+                setAnalysis(result);
+                setAnimationStep(0);
+                setCooldown(10);
+            }
+        } catch (error: any) {
             console.error("Analysis failed:", error);
+
+            if (isMounted.current) {
+
+                if (error.message?.includes('Rate limit') || error.message?.includes('429')) {
+                    toast.error("Rate limit reached. Please wait 30 seconds.", {
+                        icon: <AlertCircle className="w-4 h-4 text-rose-500" />,
+                        duration: 5000
+                    });
+                    setCooldown(30);
+                } else {
+                    toast.error(error.message || "Synthesis failed. Please wait 15s.");
+                    setCooldown(15);
+                }
+            }
         } finally {
-            setLoading(false);
+            if (isMounted.current) {
+                setLoading(false);
+            }
         }
     };
+
+    // Cooldown timer effect
+    useEffect(() => {
+        if (cooldown > 0) {
+            const timer = setInterval(() => {
+                setCooldown(prev => prev - 1);
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [cooldown]);
 
     useEffect(() => {
         let timer: any;
@@ -346,7 +400,10 @@ const CompilerVisualizerModal: React.FC<CompilerVisualizerModalProps> = ({
             <div className="absolute inset-0 bg-[#030712]/80 backdrop-blur-md" onClick={onClose} />
 
             {/* Modal Container: 80% Sizing */}
-            <div className="relative w-full h-full max-w-[95%] max-h-[90%] lg:max-w-[85%] lg:max-h-[85%] bg-[#030712]/98 border border-slate-800/50 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-500 z-10">
+            <div
+                className="relative w-full h-full max-w-[95%] max-h-[90%] lg:max-w-[85%] lg:max-h-[85%] bg-[#030712]/98 border border-slate-800/50 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-500 z-10"
+                onClick={(e) => e.stopPropagation()}
+            >
                 {/* Ambient Background Accents */}
                 <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-indigo-600/5 rounded-full blur-[120px] pointer-events-none"></div>
                 <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-cyan-600/5 rounded-full blur-[120px] pointer-events-none"></div>
@@ -415,11 +472,11 @@ const CompilerVisualizerModal: React.FC<CompilerVisualizerModalProps> = ({
                                     {/* Sync Action */}
                                     <Button
                                         onClick={handleAnalyze}
-                                        disabled={loading}
+                                        disabled={loading || cooldown > 0}
                                         className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:from-slate-800 disabled:to-slate-900 h-14 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.2)] border border-indigo-400/20 transition-all active:scale-95 text-[10px] font-black uppercase tracking-[0.25em] gap-3 text-white"
                                     >
                                         {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="w-4 h-4 fill-current" />}
-                                        {loading ? 'Synthesizing Matrix...' : 'Refresh Visualization'}
+                                        {loading ? 'Synthesizing Matrix...' : cooldown > 0 ? `Wait ${cooldown}s` : 'Refresh Visualization'}
                                     </Button>
 
                                     {/* Terminal Trace */}

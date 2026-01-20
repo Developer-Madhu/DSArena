@@ -50,6 +50,7 @@ export default function ProblemDetail() {
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
 
   const sessionStartedRef = useRef(false);
+  const isLanguageSwitching = useRef(false);
 
   const { showMotivation } = useMotivationToast();
   const { triggerVideoRecommendation, resetFailures } = useVideoRecommendations();
@@ -59,6 +60,8 @@ export default function ProblemDetail() {
   const [loading, setLoading] = useState(true);
   const [solved, setSolved] = useState(false);
   const [alreadySolved, setAlreadySolved] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   const problem = allProblemsData.find(p => p.slug === slug);
 
@@ -100,26 +103,42 @@ export default function ProblemDetail() {
     const initializeCode = async () => {
       if (!editorLanguage || !problem || !user?.id) return;
 
+      // Lock: Prevent auto-save during language switch/initialization
+      isLanguageSwitching.current = true;
+
       const draftKey = `draft-${user.id}-${problem.id}-${editorLanguage}`;
 
       // 1. Try local storage first (instant)
       const savedLocalDraft = localStorage.getItem(draftKey);
       if (savedLocalDraft) {
         setCode(savedLocalDraft);
+        isLanguageSwitching.current = false;
         return;
       }
 
       // 2. Fallback to cloud draft
-      const { loadDraft } = await import('@/lib/progressStorage');
+      const { loadDraft, loadLastSubmission } = await import('@/lib/progressStorage');
       const savedCloudDraft = await loadDraft(user.id, problem.id);
 
       if (savedCloudDraft) {
         setCode(savedCloudDraft);
         localStorage.setItem(draftKey, savedCloudDraft);
+        setLastSyncedAt(new Date());
       } else {
-        // 3. Last fallback: Starter code
-        setCode(generateStarterCode(problem, editorLanguage));
+        // 3. Last fallback: Try to recover from recent submissions
+        const lastSubmission = await loadLastSubmission(user.id, problem.id);
+        if (lastSubmission) {
+          setCode(lastSubmission);
+          localStorage.setItem(draftKey, lastSubmission);
+          setLastSyncedAt(new Date());
+        } else {
+          // 4. Default: Starter code
+          setCode(generateStarterCode(problem, editorLanguage));
+        }
       }
+
+      // Unlock: Code is now loaded for the new language
+      isLanguageSwitching.current = false;
     };
 
     initializeCode();
@@ -177,6 +196,9 @@ export default function ProblemDetail() {
   }, [user?.id, problem, solved]);
 
   useEffect(() => {
+    // Guard: Skip auto-save if we're in the middle of switching languages
+    if (isLanguageSwitching.current) return;
+
     if (problem && user?.id && code && !loading) {
       const draftKey = `draft-${user.id}-${problem.id}-${editorLanguage}`;
       localStorage.setItem(draftKey, code);
@@ -213,6 +235,14 @@ export default function ProblemDetail() {
       problemId: problem.id,
       userId: user.id,
       onSuccess: async (executionResults, avgRuntime) => {
+        // Auto-save logic on every run/submit for cross-device persistence
+        const { saveDraft } = await import('@/lib/progressStorage');
+        setSyncing(true);
+        saveDraft(user.id, problem.id, code).then((res) => {
+          if (res.success) setLastSyncedAt(new Date());
+          setSyncing(false);
+        }).catch(() => setSyncing(false));
+
         const passedCount = executionResults.filter(r => r.passed).length;
         const totalCount = executionResults.length;
         const topic = learningRecommender.detectTopic(problem.category);
@@ -234,13 +264,16 @@ export default function ProblemDetail() {
 
   const handleSave = useCallback(async () => {
     if (problem && user?.id && code) {
+      setSyncing(true);
       const draftKey = `draft-${user.id}-${problem.id}-${editorLanguage}`;
       localStorage.setItem(draftKey, code);
 
       const { saveDraft } = await import('@/lib/progressStorage');
       const result = await saveDraft(user.id, problem.id, code);
 
+      setSyncing(false);
       if (result.success) {
+        setLastSyncedAt(new Date());
         toast.success('Logic Uploaded to Mainframe. It\'s permanent now.');
       } else {
         toast.warning('Saved locally, but cloud sync failed');
@@ -345,6 +378,7 @@ export default function ProblemDetail() {
           <ResizablePanel defaultSize={50} minSize={30}>
             <div className="h-full relative overflow-hidden">
               <NeuralEditorPane
+                key={editorLanguage}
                 code={code}
                 setCode={setCode}
                 language={editorLanguage}
@@ -397,17 +431,25 @@ export default function ProblemDetail() {
           <span className="hover:text-cyan-500 cursor-pointer transition-colors" onClick={() => navigate(`/track/${problem.slug}`)}>{problem.category}</span>
           <span className="text-slate-800">/</span>
           <span className="text-slate-400 italic">{problem.title}</span>
+          {lastSyncedAt && (
+            <>
+              <span className="text-slate-800">|</span>
+              <span className="text-[9px] text-cyan-500/60 animate-in fade-in">
+                {syncing ? 'SYNCING...' : `CLOUD SYNCED: ${lastSyncedAt.toLocaleTimeString()}`}
+              </span>
+            </>
+          )}
         </div>
         <LivesDisplay />
       </div>
-      {isVisualizerOpen && (
+      {/* {isVisualizerOpen && (
         <CompilerVisualizerModal
           isOpen={isVisualizerOpen}
           onClose={() => setIsVisualizerOpen(false)}
           initialCode={code}
           language={editorLanguage}
         />
-      )}
+      )} */}
     </div>
   );
 }

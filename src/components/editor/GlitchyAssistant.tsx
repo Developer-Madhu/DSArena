@@ -48,12 +48,16 @@ export function GlitchyAssistant({ code, language, problemDescription, lastError
     }
   }, [code, language, problemDescription, lastError, isLoading]);
 
-  // Show Glitchy when there's an error
+  // Show Glitchy when there's an error - with debounce to prevent redundant calls
   useEffect(() => {
     if (lastError && lastError.length > 0) {
-      setMood('alert');
-      setIsVisible(true);
-      fetchHint(true);
+      const timer = setTimeout(() => {
+        setMood('alert');
+        setIsVisible(true);
+        fetchHint(true);
+      }, 2000); // 2s debounce
+
+      return () => clearTimeout(timer);
     }
   }, [lastError, fetchHint]);
 

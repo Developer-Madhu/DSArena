@@ -74,7 +74,7 @@ export function useDashboardLogic(user: User | null, authLoading: boolean) {
                 .from('profiles')
                 .select('username, display_name, total_solved, easy_solved, medium_solved, hard_solved, streak_days, xp')
                 .eq('id', user.id)
-                .single();
+                .maybeSingle();
 
             if (profileData) {
                 const data = profileData as any;
@@ -185,8 +185,8 @@ export function useDashboardLogic(user: User | null, authLoading: boolean) {
                 });
 
                 const [offResultById, offResultBySlug, hostResult] = await Promise.all([
-                    officialIds.length > 0 ? supabase.from('questions').select('id, slug, title, difficulty').in('id', officialIds) : Promise.resolve({ data: [] }),
-                    officialSlugs.length > 0 ? supabase.from('questions').select('id, slug, title, difficulty').in('slug', officialSlugs) : Promise.resolve({ data: [] }),
+                    officialIds.length > 0 ? supabase.from('problems').select('id, slug, title, difficulty').in('id', officialIds) : Promise.resolve({ data: [] }),
+                    officialSlugs.length > 0 ? supabase.from('problems').select('id, slug, title, difficulty').in('slug', officialSlugs) : Promise.resolve({ data: [] }),
                     hostIds.length > 0 ? supabase.from('exam_questions').select('id, title').in('id', hostIds) : Promise.resolve({ data: [] })
                 ]);
 

@@ -313,6 +313,36 @@
   .font-mono {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
   }
+
+  /* Global Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.1);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+    transition: all 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.4);
+    border: 1px solid hsl(var(--primary) / 0.2);
+    background-clip: content-box;
+  }
+
+  /* Firefox Support */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+  }
 }
 
 @layer components {
@@ -365,24 +395,6 @@
 
   .difficulty-hard {
     @apply text-destructive bg-destructive/10 border-destructive/30;
-  }
-
-  /* Custom scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-muted/30 rounded-full;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/50;
   }
 
   /* Animation classes */
@@ -571,17 +583,20 @@
   animation: glitchy-happy 0.8s ease-in-out;
 }
 
-/* Monaco editor customizations */
-.monaco-editor {
-  @apply rounded-lg overflow-hidden;
-}
+@layer components {
 
-.monaco-editor .margin {
-  background-color: hsl(var(--card)) !important;
-}
+  /* Monaco editor customizations */
+  .monaco-editor {
+    @apply rounded-lg overflow-hidden;
+  }
 
-/* Paste protection toast */
-.paste-blocked-toast {
-  @apply fixed bottom-4 right-4 bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-lg shadow-lg z-50;
-  animation: slideUp 0.3s ease-out;
+  .monaco-editor .margin {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  /* Paste protection toast */
+  .paste-blocked-toast {
+    @apply fixed bottom-4 right-4 bg-destructive/90 text-destructive-foreground px-4 py-2 rounded-lg shadow-lg z-50;
+    animation: slideUp 0.3s ease-out;
+  }
 }

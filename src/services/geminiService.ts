@@ -1,7 +1,9 @@
 import { CompilerAnalysis } from '../types';
+import { supabase } from '@/integrations/supabase/client';
 
-const GEMINI_API_KEY = 'AIzaSyB53Bog_-7EFFY9rP3kW8DedPkfmnFE4XE';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
+// Global throttle to prevent rapid-fire API calls
+let lastCallTime = 0;
+const MIN_INTERVAL_MS = 2000; // 2 seconds between calls
 
 export async function analyzeCode(code: string, language: string, input: string = ''): Promise<CompilerAnalysis> {
     const systemPrompt = `You are a Code Analysis Engine. Analyze the provided code snippet and return a strict JSON object (no markdown, no code blocks) matching this TypeScript interface:
@@ -10,7 +12,7 @@ interface CompilerAnalysis {
   asciiFlow: string; // A vertical ASCII art flowchart of the logic
   mermaidChart: string; // Valid Mermaid.js flowchart syntax (TD)
   executionLogic: string; // A clear text explanation of the code's flow
-  stateTable: {
+  stateTable: { 
     step: number;
     line: string; // The code line content
     variables: { name: string; value: string }[];
@@ -32,23 +34,43 @@ interface CompilerAnalysis {
     const userPrompt = `Language: ${language}\nInput: ${input}\nCode:\n${code}`;
 
     try {
-        const response = await fetch(GEMINI_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        // Throttle check: Enforce minimum interval between calls
+        const now = Date.now();
+        if (now - lastCallTime < MIN_INTERVAL_MS) {
+            console.warn('Throttle: Blocking rapid request.');
+            throw new Error('Please wait a moment before refreshing.');
+        }
+        lastCallTime = now;
+
+        const { data, error } = await supabase.functions.invoke('gemini-proxy', {
+            body: {
                 contents: [{
-                    parts: [{ text: systemPrompt + "\n\n" + userPrompt }]
-                }]
-            })
+                    parts: [{ text: userPrompt }]
+                }],
+                systemInstruction: systemPrompt
+            }
         });
 
-        const data = await response.json();
+        if (error) {
+            console.error('Gemini Proxy Error:', error);
+            const errorMsg = error.message || '';
+            const dataStr = data ? JSON.stringify(data) : '';
+            const isRateLimit =
+                error.status === 429 ||
+                errorMsg.includes('429') ||
+                errorMsg.includes('Too Many Requests') ||
+                dataStr.includes('429') ||
+                dataStr.includes('RESOURCE_EXHAUSTED');
+
+            if (isRateLimit) {
+                throw new Error('Rate limit reached. Please wait 30 seconds.');
+            }
+            throw new Error('Failed to generate visualization from AI Gateway');
+        }
 
         if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-            console.error('Gemini API error:', data);
-            throw new Error('Failed to generate visualization from Gemini');
+            console.error('Gemini response error:', data);
+            throw new Error('Invalid response from AI Gateway');
         }
 
         let generatedText = data.candidates[0].content.parts[0].text;
@@ -59,7 +81,7 @@ interface CompilerAnalysis {
         const parsed: CompilerAnalysis = JSON.parse(generatedText);
         return parsed;
     } catch (error) {
-        console.error('Error analyzing code with Gemini:', error);
+        console.error('Error analyzing code with AI:', error);
         throw error;
     }
 }
@@ -95,23 +117,35 @@ interface ExtractedQuestion {
 4. Return ONLY the JSON array.`;
 
     try {
-        const response = await fetch(GEMINI_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        const { data, error } = await supabase.functions.invoke('gemini-proxy', {
+            body: {
                 contents: [{
-                    parts: [{ text: systemPrompt + "\n\nRaw Exam Text:\n" + text }]
-                }]
-            })
+                    parts: [{ text: `Raw Exam Text:\n${text}` }]
+                }],
+                systemInstruction: systemPrompt
+            }
         });
 
-        const data = await response.json();
+        if (error) {
+            console.error('Gemini Proxy Error:', error);
+            const errorMsg = error.message || '';
+            const dataStr = data ? JSON.stringify(data) : '';
+            const isRateLimit =
+                error.status === 429 ||
+                errorMsg.includes('429') ||
+                errorMsg.includes('Too Many Requests') ||
+                dataStr.includes('429') ||
+                dataStr.includes('RESOURCE_EXHAUSTED');
+
+            if (isRateLimit) {
+                throw new Error('AI Rate limit reached. Gemini free tier allows limited requests per minute. Please wait 30-60 seconds.');
+            }
+            throw new Error('Failed to extract questions from AI Gateway');
+        }
 
         if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-            console.error('Gemini API error:', data);
-            throw new Error('Failed to extract questions from Gemini');
+            console.error('Gemini response error:', data);
+            throw new Error('Invalid response from AI Gateway');
         }
 
         let generatedText = data.candidates[0].content.parts[0].text;
@@ -119,7 +153,7 @@ interface ExtractedQuestion {
 
         return JSON.parse(generatedText);
     } catch (error) {
-        console.error('Error extracting questions with Gemini:', error);
+        console.error('Error extracting questions with AI:', error);
         throw error;
     }
 }

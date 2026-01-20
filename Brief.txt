@@ -76,7 +76,7 @@ export default function PracticeProblemsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const { lives, noLives, isLoading: livesLoading, penalize, timeUntilRestore, formattedTimeRemaining } = useLivesManager(user?.id);
+  const { lives, noLives, penalize, timeUntilRestore, formattedTimeRemaining } = useLivesManager(user?.id);
   const { running, submitting, results, consoleOutput, lastError, execute, setResults, setLastError } = useProblemExecution();
 
   // Helper functions for UI elements
@@ -322,7 +322,7 @@ export default function PracticeProblemsPage() {
     }
   };
 
-  if (isLoading || livesLoading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

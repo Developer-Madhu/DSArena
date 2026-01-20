@@ -326,3 +326,39 @@ export async function loadDraft(
     return null;
   }
 }
+
+// Load last written code from submissions as a secondary fallback
+export async function loadLastSubmission(
+  userId: string,
+  problemId: string
+): Promise<string | null> {
+  try {
+    const isUuid = isValidUUID(problemId);
+
+    // Check both UUID and problem_slug/id for robustness
+    const query = supabase
+      .from('submissions')
+      .select('code')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (isUuid) {
+      query.eq('problem_id', problemId);
+    } else {
+      query.eq('problem_slug', problemId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      console.error('Error loading last submission:', error);
+      return null;
+    }
+
+    return data?.code || null;
+  } catch (error) {
+    console.error('Failed to load last submission:', error);
+    return null;
+  }
+}

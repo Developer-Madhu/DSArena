@@ -62,13 +62,13 @@ export class GlobalErrorBoundary extends Component<Props, State> {
                         </Button>
                     </div>
 
-                    <div className="mt-8 p-4 bg-black/50 border border-white/5 rounded text-left max-w-2xl overflow-auto">
+                    {/* <div className="mt-8 p-4 bg-black/50 border border-white/5 rounded text-left max-w-2xl overflow-auto">
                         <p className="text-rose-500 font-mono text-[10px] uppercase mb-2">Stack Trace Log:</p>
                         <pre className="text-[10px] text-white/20 font-mono leading-relaxed whitespace-pre-wrap">
                             {this.state.error?.message}
                             {this.state.error?.stack}
                         </pre>
-                    </div>
+                    </div> */}
                 </div>
             );
         }
