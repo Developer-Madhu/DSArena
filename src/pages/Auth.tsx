@@ -141,7 +141,6 @@ export default function Auth() {
           <nav className="hidden md:flex items-center gap-10">
             <Link className="text-sm font-medium text-white/70 hover:text-white transition-colors" to="/">Home</Link>
             <Link className="text-sm font-medium text-white/70 hover:text-white transition-colors" to="/leaderboard">Leaderboard</Link>
-            <Link className="text-sm font-medium text-white/70 hover:text-white transition-colors" to="/arena">Arena</Link>
           </nav>
           <button className="text-sm font-bold px-6 py-2 border border-white/10 rounded-lg hover:bg-white/5 transition-colors" onClick={() => toast.info('Reinforcements contacted. Stand by for assist.')}>
             Support
