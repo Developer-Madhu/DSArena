@@ -47,7 +47,6 @@ const App = () => (
           <Toaster />
           <Sonner position="top-right" />
           <BrowserRouter>
-            <PersonalizedAssistant />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Index />} />

@@ -283,27 +283,27 @@ export default function PracticeProblemsPage() {
   const lastPenalizedRef = useRef<number>(0);
 
   // Focus violation penalties (visibility change and blur)
-  useEffect(() => {
-    if (noLives || !user) return;
+  // useEffect(() => {
+  //   if (noLives || !user) return;
 
-    const handleFocusLoss = () => {
-      const now = Date.now();
-      if (now - lastPenalizedRef.current < 2000) return;
+  //   const handleFocusLoss = () => {
+  //     const now = Date.now();
+  //     if (now - lastPenalizedRef.current < 2000) return;
 
-      if (document.hidden || !document.hasFocus()) {
-        penalize();
-        lastPenalizedRef.current = now;
-      }
-    };
+  //     if (document.hidden || !document.hasFocus()) {
+  //       penalize();
+  //       lastPenalizedRef.current = now;
+  //     }
+  //   };
 
-    document.addEventListener('visibilitychange', handleFocusLoss);
-    window.addEventListener('blur', handleFocusLoss);
+  //   document.addEventListener('visibilitychange', handleFocusLoss);
+  //   window.addEventListener('blur', handleFocusLoss);
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleFocusLoss);
-      window.removeEventListener('blur', handleFocusLoss);
-    };
-  }, [noLives, user, penalize]);
+  //   return () => {
+  //     document.removeEventListener('visibilitychange', handleFocusLoss);
+  //     window.removeEventListener('blur', handleFocusLoss);
+  //   };
+  // }, [noLives, user, penalize]);
 
   // Convert test cases to format expected by TestCasePanel
   const testCases = problem?.visibleTestCases.map((tc, index) => ({
@@ -330,32 +330,32 @@ export default function PracticeProblemsPage() {
     );
   }
 
-  if (noLives) {
-    return (
-      <div className="flex h-screen flex-col bg-[#030712]">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto p-8">
-            <h2 className="text-2xl font-bold text-rose-500 mb-4 uppercase tracking-[0.2em]">YOU BROKE FOCUS. YOU PAY THE PRICE.</h2>
-            <p className="text-slate-400 mb-6 font-mono text-sm leading-relaxed">
-              Breach detected. You broke the Arena's #1 rule. While you're locked out, warriors just took your score. This is what happens when you treat combat like a casual game
-            </p>
-            {formattedTimeRemaining && (
-              <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6 mb-6">
-                <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 font-bold">PENALTY COUNTDOWN</p>
-                <p className="text-4xl font-mono font-bold text-cyan-500 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-                  {formattedTimeRemaining}
-                </p>
-              </div>
-            )}
-            <Button onClick={() => navigate('/learning-tracks')} variant="outline" className="border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 uppercase tracking-widest font-bold text-xs">
-              RETURN TO BASE
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // if (noLives) {
+  // return (
+  //     <div className="flex h-screen flex-col bg-[#030712]">
+  //       <Navbar />
+  //       <div className="flex-1 flex items-center justify-center">
+  //         <div className="text-center max-w-md mx-auto p-8">
+  //           <h2 className="text-2xl font-bold text-rose-500 mb-4 uppercase tracking-[0.2em]">YOU BROKE FOCUS. YOU PAY THE PRICE.</h2>
+  //           <p className="text-slate-400 mb-6 font-mono text-sm leading-relaxed">
+  //             Breach detected. You broke the Arena's #1 rule. While you're locked out, warriors just took your score. This is what happens when you treat combat like a casual game
+  //           </p>
+  //           {formattedTimeRemaining && (
+  //             <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6 mb-6">
+  //               <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 font-bold">PENALTY COUNTDOWN</p>
+  //               <p className="text-4xl font-mono font-bold text-cyan-500 drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+  //                 {formattedTimeRemaining}
+  //               </p>
+  //             </div>
+  //           )}
+  //           <Button onClick={() => navigate('/learning-tracks')} variant="outline" className="border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 uppercase tracking-widest font-bold text-xs">
+  //             RETURN TO BASE
+  //           </Button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (error || !problem) {
     return (
@@ -671,7 +671,7 @@ export default function PracticeProblemsPage() {
           <span className="text-slate-800">/</span>
           <span className="text-slate-400 italic">{problem.title}</span>
         </div>
-        <LivesDisplay />
+        {/* <LivesDisplay /> */}
       </div>
     </div>
   );
