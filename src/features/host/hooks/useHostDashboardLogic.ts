@@ -16,6 +16,7 @@ export interface ManualQuestion {
         output: string;
         hidden: boolean;
     }[];
+    variant?: 'A' | 'B' | 'C' | 'D';
 }
 
 export interface ExamInstance {
@@ -326,7 +327,8 @@ export function useHostDashboardLogic() {
                     ...tc,
                     input: tc.input.split('||').map(line => line.trim()).join('\n'),
                     output: tc.output.split('||').map(line => line.trim()).join('\n')
-                }))
+                })),
+                assigned_variant: q.variant || 'A'
             }));
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { error } = await sb.from('exam_questions').insert(records as any);

@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Plus, PlusCircle, Trash2, ShieldCheck, Eye, EyeOff, BrainCircuit, CheckCircle2, Save, X, Loader2 } from 'lucide-react';
+import { FileText, Plus, PlusCircle, Trash2, ShieldCheck, Eye, EyeOff, BrainCircuit, CheckCircle2, Save, X, Loader2, Layers, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ManualQuestion, ExamInstance } from '../hooks/useHostDashboardLogic';
 import { pythonProblemsData, getPythonCategories } from '@/lib/pythonProblemsData';
@@ -43,6 +43,8 @@ export const HostQuestionDesigner = ({
     const [activeTab, setActiveTab] = useState("manual");
     const [selectedBankCategories, setSelectedBankCategories] = useState<string[]>(["Python Core"]);
     const [selectedBankProblemIds, setSelectedBankProblemIds] = useState<string[]>([]);
+    const [generatedSets, setGeneratedSets] = useState<string[][]>([]);
+    const [activeSetIndex, setActiveSetIndex] = useState(0);
 
     const toggleCategory = (category: string) => {
         setSelectedBankCategories(prev =>
@@ -79,6 +81,144 @@ export const HostQuestionDesigner = ({
 
         setSelectedBankProblemIds(selected);
         toast.success("Smart selection applied: 1 Easy, 1 Medium, 1 Hard + Randoms");
+    };
+
+    const handleGenerate4Sets = () => {
+        // 1. Filter Pool
+        let pool = pythonProblemsData.filter(p => selectedBankCategories.includes(p.category));
+
+        if (pool.length === 0) {
+            toast.error("No questions found in selected categories.");
+            return;
+        }
+
+        // 2. Pool Validation
+        const totalNeeded = instanceQuota * 4;
+        if (pool.length < totalNeeded) {
+            toast.warning(`Not enough unique questions! Needed: ${totalNeeded}, Available: ${pool.length}. Sets will overlap.`);
+        }
+
+        // 3. Shuffle Everything once
+        pool = [...pool].sort(() => 0.5 - Math.random());
+
+        // 4. Generate Sets
+        const newSets: string[][] = [];
+        const globalUsedIds = new Set<string>();
+
+        for (let i = 0; i < 4; i++) {
+            const currentSet: string[] = [];
+
+            // A. Try to find unused Easy/Med/Hard first
+            const easy = pool.find(p => p.difficulty.toLowerCase() === 'easy' && !globalUsedIds.has(p.id));
+            if (easy) { currentSet.push(easy.id); globalUsedIds.add(easy.id); }
+
+            const medium = pool.find(p => p.difficulty.toLowerCase() === 'medium' && !globalUsedIds.has(p.id));
+            if (medium) { currentSet.push(medium.id); globalUsedIds.add(medium.id); }
+
+            const hard = pool.find(p => p.difficulty.toLowerCase() === 'hard' && !globalUsedIds.has(p.id));
+            if (hard) { currentSet.push(hard.id); globalUsedIds.add(hard.id); }
+
+            // B. Fill remaining quota with ANY unused questions
+            while (currentSet.length < instanceQuota) {
+                const filler = pool.find(p => !globalUsedIds.has(p.id));
+                if (filler) {
+                    currentSet.push(filler.id);
+                    globalUsedIds.add(filler.id);
+                } else {
+                    // Fallback Logic: Prioritize filling quota over uniqueness
+                    // Pick from the general pool but avoid duplicates within same set
+                    const reusedFiller = pool.find(p => !currentSet.includes(p.id));
+                    if (!reusedFiller) break; // Entire pool exhausted (smaller than instanceQuota)
+                    currentSet.push(reusedFiller.id);
+                }
+            }
+
+            newSets.push(currentSet);
+        }
+
+        setGeneratedSets(newSets);
+        setActiveSetIndex(0);
+        // Show Set A immediately
+        setSelectedBankProblemIds(newSets[0]);
+        toast.success("Variants A, B, C, D Generated (Strict Exclusion Active)");
+    };
+
+    const handleSyncVariant = () => {
+        if (selectedBankProblemIds.length === 0) return;
+
+        // Clone and Shuffle Test Cases
+        const problems = pythonProblemsData.filter(p => selectedBankProblemIds.includes(p.id));
+
+        const mutatedQuestions: ManualQuestion[] = problems.map(problem => {
+            // Shuffle helper
+            const shuffleArr = <T,>(arr: T[]) => [...arr].sort(() => 0.5 - Math.random());
+
+            const visible = shuffleArr(problem.visibleTestCases).map(tc => ({
+                input: tc.input,
+                output: tc.expectedOutput,
+                hidden: false
+            }));
+
+            const hidden = shuffleArr(problem.hiddenTestCases || []).map(tc => ({
+                input: tc.input,
+                output: tc.expectedOutput,
+                hidden: true
+            }));
+
+            return {
+                title: problem.title,
+                description: problem.description,
+                inputFormat: problem.inputFormat,
+                testCases: [...visible, ...hidden]
+            };
+        });
+
+        // Directly update manual questions with mutated versions
+        setManualQuestions(prev => [...prev, ...mutatedQuestions]);
+        setSelectedBankProblemIds([]);
+        toast.success(`${problems.length} problems (mutated & shuffled) synced to staging.`);
+    };
+
+    const handleSyncAllVariants = () => {
+        if (generatedSets.length !== 4) return;
+
+        const allMutatedQuestions: ManualQuestion[] = [];
+        const variantLabels: ('A' | 'B' | 'C' | 'D')[] = ['A', 'B', 'C', 'D'];
+
+        generatedSets.forEach((setIds, i) => {
+            const problems = pythonProblemsData.filter(p => setIds.includes(p.id));
+            const variant = variantLabels[i];
+
+            const mutatedQuestions: ManualQuestion[] = problems.map(problem => {
+                const shuffleArr = <T,>(arr: T[]) => [...arr].sort(() => 0.5 - Math.random());
+
+                const visible = shuffleArr(problem.visibleTestCases).map(tc => ({
+                    input: tc.input,
+                    output: tc.expectedOutput,
+                    hidden: false
+                }));
+
+                const hidden = shuffleArr(problem.hiddenTestCases || []).map(tc => ({
+                    input: tc.input,
+                    output: tc.expectedOutput,
+                    hidden: true
+                }));
+
+                return {
+                    title: problem.title,
+                    description: problem.description,
+                    inputFormat: problem.inputFormat,
+                    testCases: [...visible, ...hidden],
+                    variant: variant
+                };
+            });
+            allMutatedQuestions.push(...mutatedQuestions);
+        });
+
+        setManualQuestions(prev => [...prev, ...allMutatedQuestions]);
+        setGeneratedSets([]);
+        setSelectedBankProblemIds([]);
+        toast.success("Synced 4 Variants (A-D) to Staging");
     };
 
     const addTestCase = () => setCurrentQuestion(prev => ({ ...prev, testCases: [...prev.testCases, { input: '', output: '', hidden: false }] }));
@@ -226,27 +366,65 @@ export const HostQuestionDesigner = ({
                                     <Badge variant="outline" className="font-mono text-cyan-400 border-cyan-500/30">
                                         Selection: {selectedBankProblemIds.length} / {instanceQuota}
                                     </Badge>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={handleSmartRandomize}
-                                        disabled={selectedBankCategories.length === 0}
-                                        className="h-7 text-[10px] font-bold uppercase border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
-                                    >
-                                        <BrainCircuit className="h-3 w-3 mr-1" /> Smart Randomize
-                                    </Button>
                                 </div>
                                 {selectedBankProblemIds.length > 0 && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setSelectedBankProblemIds([])}
-                                        className="h-7 text-[10px] uppercase text-red-400 hover:text-red-300"
-                                    >
-                                        Clear
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        {generatedSets.length === 4 && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleSyncAllVariants}
+                                                className="h-7 text-[10px] uppercase text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                                            >
+                                                Sync All Variants
+                                            </Button>
+                                        )}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setSelectedBankProblemIds([]);
+                                                setGeneratedSets([]);
+                                            }}
+                                            className="h-7 text-[10px] uppercase text-red-400 hover:text-red-300"
+                                        >
+                                            Clear
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
+
+                            <div className="flex gap-2 items-center">
+                                <Button
+                                    onClick={handleGenerate4Sets}
+                                    disabled={selectedBankCategories.length === 0}
+                                    className="flex-1 h-9 bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-bold uppercase tracking-wider text-cyan-400"
+                                >
+                                    <Layers className="h-4 w-4 mr-2" /> Generate 4 Variants
+                                </Button>
+                            </div>
+
+                            {generatedSets.length > 0 && (
+                                <div className="flex bg-black/40 p-1 rounded-lg border border-white/10 gap-1">
+                                    {['A', 'B', 'C', 'D'].map((variant, idx) => (
+                                        <button
+                                            key={variant}
+                                            onClick={() => {
+                                                setActiveSetIndex(idx);
+                                                setSelectedBankProblemIds(generatedSets[idx]);
+                                            }}
+                                            className={cn(
+                                                "flex-1 py-1.5 rounded text-[10px] font-bold transition-all",
+                                                activeSetIndex === idx
+                                                    ? "bg-cyan-500 text-white shadow-lg shadow-cyan-900/40"
+                                                    : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                                            )}
+                                        >
+                                            Set {variant}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
 
                             <div className="max-h-60 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-white/10">
                                 {pythonProblemsData
@@ -283,7 +461,7 @@ export const HostQuestionDesigner = ({
                                     ))}
                             </div>
                             <Button
-                                onClick={handleBankSync}
+                                onClick={handleSyncVariant}
                                 disabled={selectedBankProblemIds.length === 0}
                                 className="w-full h-11 text-white font-bold uppercase tracking-widest sheen-btn bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-lg shadow-violet-900/20 transition-all active:scale-95"
                             >

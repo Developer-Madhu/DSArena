@@ -95,7 +95,7 @@ export default function PracticeProblemsIndex() {
                 value={adminCode}
                 onChange={(e) => setAdminCode(e.target.value)}
                 placeholder="Enter Administrative Protocol Code"
-                className="bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-[11px] font-mono tracking-[0.2em] text-white/70 placeholder:text-white/20 w-full uppercase"
+                className="bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-[11px] font-mono tracking-[0.2em] text-white/70 placeholder:text-white/20 w-full"
               />
             </div>
             <div className="flex items-center gap-1.5">

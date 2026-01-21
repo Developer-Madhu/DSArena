@@ -238,10 +238,17 @@ export default function Exam() {
           setTotalSeconds(instanceData.duration_minutes * 60);
         }
 
-        const { data: qData, error } = await supabase
+        // Fetch Questions filtered by the Session's Variant
+        let query = supabase
           .from('exam_questions' as any)
           .select('*')
-          .eq('exam_instance_id', session.exam_instance_id) as any;
+          .eq('exam_instance_id', session.exam_instance_id);
+
+        if (session.assigned_variant) {
+          query = query.eq('assigned_variant', session.assigned_variant);
+        }
+
+        const { data: qData, error } = await query as any;
 
         if (error || !qData) throw new Error('Hosted questions missing');
 
@@ -292,6 +299,10 @@ export default function Exam() {
   const handleStart = async (selectedLanguage: ExamLanguage, instanceData?: any) => {
     if (!user) return navigate('/auth');
     setIsStarting(true);
+
+    // Generate Variant FIRST
+    const variant = ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
+
     let finalQuestions: ExamQuestion[] = [];
     let instanceId: string | null = null;
 
@@ -299,7 +310,20 @@ export default function Exam() {
       instanceId = instanceData.id;
       setTotalSeconds(instanceData.duration * 60);
 
-      finalQuestions = instanceData.questions.map((q: any, i: number) => ({
+      // 2. FILTER: Only keep questions that match the generated variant
+      const filteredRawQuestions = instanceData.questions.filter((q: any) =>
+        q.assigned_variant === variant
+      );
+
+      // Safety Check
+      if (filteredRawQuestions.length === 0 && instanceData.questions.length > 0) {
+        toast.error(`Configuration Error: Variant '${variant}' is empty in DB. Contact Host.`);
+        setIsStarting(false);
+        return;
+      }
+
+      // 3. MAP: Only the filtered questions become ExamQuestions
+      finalQuestions = filteredRawQuestions.map((q: any, i: number) => ({
         id: q.id,
         title: q.title,
         description: q.description,
@@ -321,13 +345,15 @@ export default function Exam() {
     }
 
     setQuestions(finalQuestions);
+
     try {
       const { data: session, error } = await supabase.from('exam_sessions').insert({
         user_id: user.id,
         language: selectedLanguage,
         question_ids: finalQuestions.map(q => q.id),
         status: 'in_progress',
-        exam_instance_id: instanceId
+        exam_instance_id: instanceId,
+        assigned_variant: variant
       }).select().single();
 
       if (error) throw error;
