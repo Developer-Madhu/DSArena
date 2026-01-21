@@ -18,7 +18,8 @@ import {
   Zap,
   Terminal,
   Swords,
-  ChevronRight
+  ChevronRight,
+  Mail
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -178,6 +179,10 @@ export function Navbar() {
             <Settings className="mr-2 h-4 w-4" />
             Settings
           </DropdownMenuItem> */}
+          <DropdownMenuItem onClick={() => navigate('/contact')} className="focus:bg-white/5 focus:text-white cursor-pointer py-2.5 rounded-lg">
+            <Mail className="mr-2 h-4 w-4 text-primary" />
+            Contact Support
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleSignOut} className="text-red-400 focus:text-red-400 focus:bg-red-400/10 cursor-pointer py-2.5 rounded-lg">
             <LogOut className="mr-2 h-4 w-4" />
             Sign out
