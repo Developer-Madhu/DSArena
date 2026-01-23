@@ -40,6 +40,7 @@ export default function Exam() {
   const [isRevoked, setIsRevoked] = useState(false);
   const [totalSeconds, setTotalSeconds] = useState(EXAM_CONFIG.DEFAULT_DURATION_SECONDS);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const submitRef = useRef<(auto?: boolean) => void>(() => { });
   const exitFullscreenRef = useRef<() => void>(() => { });
@@ -242,7 +243,8 @@ export default function Exam() {
         let query = supabase
           .from('exam_questions' as any)
           .select('*')
-          .eq('exam_instance_id', session.exam_instance_id);
+          .eq('exam_instance_id', session.exam_instance_id)
+          .order('created_at', { ascending: true }); // Ensure consistent order
 
         if (session.assigned_variant) {
           query = query.eq('assigned_variant', session.assigned_variant);
@@ -388,6 +390,12 @@ export default function Exam() {
       news[currentIndex] = 'attempted';
       setQuestionStatuses(news);
     }
+
+    // Debounced Auto-save
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      handleSaveCode(code);
+    }, 2000); // 2s debounce
   };
 
   const handleSaveCode = async (code: string) => {

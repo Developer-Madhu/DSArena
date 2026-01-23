@@ -106,23 +106,41 @@ export default function DailyChallengePage() {
 
   // Language-specific starter code templates
   useEffect(() => {
-    // Initialize code when challenge and language are loaded
-    if (challenge && selectedLanguage) {
-      const draftKey = `daily-challenge-draft-${user?.id || 'anonymous'}-${selectedLanguage}`;
-      const savedDraft = localStorage.getItem(draftKey);
-      if (savedDraft) {
-        setCode(savedDraft);
-      } else {
-        // Map DailyChallenge to ProblemData for the template generator
-        const problemMapped = {
-          ...challenge,
-          starterCode: '', // Not used if template exists
-          visibleTestCases: challenge.testCases.filter(tc => tc.is_visible),
-          hiddenTestCases: challenge.testCases.filter(tc => !tc.is_visible),
-        } as unknown as ProblemData;
-        setCode(generateStarterCode(problemMapped, selectedLanguage));
+    const initializeCode = async () => {
+      if (!challenge || !selectedLanguage) return;
+
+      const userId = user?.id || 'anonymous';
+      const draftKey = `daily-challenge-draft-${userId}-${selectedLanguage}`;
+
+      // 1. Try local storage first
+      const savedLocalDraft = localStorage.getItem(draftKey);
+      if (savedLocalDraft) {
+        setCode(savedLocalDraft);
+        return;
       }
-    }
+
+      // 2. Try cloud draft if user is logged in
+      if (user?.id) {
+        const { loadDraft } = await import('@/lib/progressStorage');
+        const cloudDraft = await loadDraft(user.id, challenge.id);
+        if (cloudDraft) {
+          setCode(cloudDraft);
+          localStorage.setItem(draftKey, cloudDraft);
+          return;
+        }
+      }
+
+      // 3. Fallback to starter code
+      const problemMapped = {
+        ...challenge,
+        starterCode: '',
+        visibleTestCases: challenge.testCases.filter(tc => tc.is_visible),
+        hiddenTestCases: challenge.testCases.filter(tc => !tc.is_visible),
+      } as unknown as ProblemData;
+      setCode(generateStarterCode(problemMapped, selectedLanguage));
+    };
+
+    initializeCode();
   }, [challenge, selectedLanguage, user?.id]);
 
   useEffect(() => {
@@ -262,15 +280,41 @@ export default function DailyChallengePage() {
     };
   }, [noLives, user, penalize]);
 
-  const saveDraft = useCallback(() => {
+  const saveDraft = useCallback(async () => {
     if (!user) {
       toast.error('Please sign in to save your draft');
       return;
     }
+    if (!challenge) return;
+
     const draftKey = `daily-challenge-draft-${user.id}-${selectedLanguage}`;
     localStorage.setItem(draftKey, code);
-    toast.success('Draft saved');
-  }, [user, code, selectedLanguage]);
+
+    const { saveDraft: saveToCloud } = await import('@/lib/progressStorage');
+    const result = await saveToCloud(user.id, challenge.id, code);
+
+    if (result.success) {
+      toast.success('Logic Uploaded to Mainframe');
+    } else {
+      toast.warning('Saved locally, but synchronization failed');
+    }
+  }, [user, code, selectedLanguage, challenge]);
+
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleCodeChange = (newCode: string) => {
+    setCode(newCode);
+
+    // Debounced Auto-save
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      if (challenge && user?.id) {
+        import('@/lib/progressStorage').then(({ saveDraft: saveToCloud }) => {
+          saveToCloud(user.id, challenge.id, newCode);
+        });
+      }
+    }, 2000);
+  };
 
   const runCode = async (submitAll = false) => {
     if (!challenge) return;
@@ -627,7 +671,7 @@ export default function DailyChallengePage() {
                     )}
                     <CodeEditor
                       value={code}
-                      onChange={setCode}
+                      onChange={handleCodeChange}
                       language={selectedLanguage}
                       hideHeader
                       hideBorder

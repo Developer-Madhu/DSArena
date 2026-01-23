@@ -108,14 +108,11 @@ export default function LanguageTrackPage() {
           return (
             <Link
               key={problem.id}
-              to={isSolved ? '#' : `/problem/${problem.slug}`}
-              onClick={(e) => {
-                if (isSolved) e.preventDefault();
-              }}
+              to={`/problem/${problem.slug}`}
               className={cn(
-                "group relative flex flex-col p-4 rounded-lg border transition-all duration-300",
+                "group relative flex flex-col p-4 rounded-lg border transition-all duration-300 cursor-pointer",
                 isSolved
-                  ? "bg-emerald-500/10 border-emerald-500/30 cursor-default"
+                  ? "bg-emerald-500/10 border-emerald-500/30 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)] hover:bg-emerald-500/20"
                   : "bg-white/[0.03] border-white/5 hover:border-emerald-500/50 hover:bg-white/[0.06] hover:shadow-[0_0_20px_rgba(16,185,129,0.1)]"
               )}
             >
